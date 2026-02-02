@@ -66,9 +66,25 @@ export class GameRoom {
             } else if (this.players.length > 0) {
                 // Make first player the new host
                 this.players[0].isHost = true;
-                this.broadcastLobbyState();
+                
+                // If game was in progress and only 1 player remains, they win by default
+                if (this.gameStarted) {
+                    this.endGameByForfeit(this.players[0]);
+                } else {
+                    this.broadcastLobbyState();
+                }
             }
         }
+    }
+
+    endGameByForfeit(winner) {
+        this.winner = winner;
+        this.io.to(this.roomCode).emit('gameOver', {
+            winner: { id: winner.id, name: winner.name },
+            scores: this.calculateScores(winner.id),
+            reason: 'forfeit' // All other players left
+        });
+        console.log(`[Room ${this.roomCode}] Game ended by forfeit - ${winner.name} wins`);
     }
 
     hasPlayer(playerId) {

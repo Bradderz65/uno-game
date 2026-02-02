@@ -273,6 +273,8 @@ createBtn.addEventListener('click', () => {
             isHost = true;
             saveSession();
             showWaitingSection();
+            // Manually update UI for host since we know we're the host
+            updateLobbyUIForHost();
         } else {
             showToast(response.error, 'error');
         }
@@ -620,6 +622,21 @@ function showWaitingSection() {
     joinSection.classList.add('hidden');
     waitingSection.classList.remove('hidden');
     displayRoomCode.textContent = currentRoomCode;
+}
+
+function updateLobbyUIForHost() {
+    // Show host controls immediately when creating room
+    // This is a fallback in case the lobbyState event arrives before myPlayerId is set
+    if (!isHost) return;
+    
+    startBtn.classList.remove('hidden');
+    if (addBotBtn) {
+        addBotBtn.classList.remove('hidden');
+        addBotBtn.disabled = false;
+        addBotBtn.title = '';
+    }
+    gameSettings.classList.remove('hidden');
+    waitingText.classList.remove('hidden');
 }
 
 function updateLobbyUI(state) {

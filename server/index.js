@@ -74,8 +74,8 @@ io.on('connection', (socket) => {
         const room = new GameRoom(roomCode, io);
         rooms.set(roomCode, room);
 
-        room.addPlayer(socket, playerName);
         socket.join(roomCode);
+        room.addPlayer(socket, playerName);
 
         saveState(); // Save state
         callback({ success: true, roomCode, playerId: socket.id });
@@ -259,12 +259,6 @@ io.on('connection', (socket) => {
             if (room.players.length === 0) {
                 rooms.delete(roomCode);
                 console.log(`Room ${roomCode} deleted (empty)`);
-            } else {
-                if (room.gameStarted) {
-                    room.broadcastGameState();
-                } else {
-                    room.broadcastLobbyState();
-                }
             }
             saveState(); // Save state
         }
@@ -302,13 +296,6 @@ io.on('connection', (socket) => {
                         if (room.players.length === 0) {
                             rooms.delete(roomCode);
                             console.log(`Room ${roomCode} deleted (empty)`);
-                        } else {
-                            // Notify remaining players
-                            if (room.gameStarted) {
-                                room.broadcastGameState();
-                            } else {
-                                room.broadcastLobbyState();
-                            }
                         }
                         saveState(); // Save final state
                     }
