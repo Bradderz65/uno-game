@@ -3,9 +3,10 @@ import { GameClient } from './game-client.js';
 import { sounds } from './sounds.js';
 
 // Connect to server
-const socket = io(window.location.hostname === 'localhost'
-    ? 'http://localhost:3000'
-    : window.location.origin);
+const socketOrigin = window.location.port && window.location.port !== '3000'
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : window.location.origin;
+const socket = io(socketOrigin);
 
 // Initialize game client
 const game = new GameClient(socket);
@@ -386,6 +387,29 @@ addBotBtn?.addEventListener('click', () => {
     });
 });
 
+// Copy room code button
+document.getElementById('copy-code-btn')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(currentRoomCode).then(() => {
+        const btn = document.getElementById('copy-code-btn');
+        btn.classList.add('copied');
+        showToast('Room code copied!', 'success');
+        setTimeout(() => btn.classList.remove('copied'), 2000);
+    });
+});
+
+// Starting cards +/- buttons
+document.getElementById('dec-cards')?.addEventListener('click', () => {
+    const input = document.getElementById('starting-cards');
+    const val = parseInt(input.value) || 7;
+    if (val > 1) input.value = val - 1;
+});
+
+document.getElementById('inc-cards')?.addEventListener('click', () => {
+    const input = document.getElementById('starting-cards');
+    const val = parseInt(input.value) || 7;
+    if (val < 20) input.value = val + 1;
+});
+
 // Leave room function
 function leaveRoom() {
     if (confirm('Are you sure you want to leave?')) {
@@ -614,6 +638,13 @@ socket.on('roomClosed', () => {
     location.reload();
 });
 
+socket.on('kicked', () => {
+    clearSession();
+    showToast('You were removed from the room', 'error');
+    sounds.error();
+    location.reload();
+});
+
 // ========================================
 // UI Update Functions
 // ========================================
@@ -641,15 +672,52 @@ function updateLobbyUIForHost() {
 
 function updateLobbyUI(state) {
     playersList.innerHTML = '';
+    
+    // Update player count
+    const playerCountEl = document.getElementById('player-count');
+    if (playerCountEl) {
+        playerCountEl.textContent = `${state.players.length}/10`;
+    }
 
     state.players.forEach(player => {
         const item = document.createElement('div');
         item.className = 'player-item';
+        
+        // Determine badges
+        let badges = '';
+        if (player.id === myPlayerId) {
+            badges += '<span class="badge" data-type="you">You</span>';
+        }
+        if (player.isHost) {
+            badges += '<span class="badge" data-type="host">Host</span>';
+        }
+        if (player.isBot) {
+            badges += '<span class="badge" data-type="bot">Bot</span>';
+        }
+
+        const canKick = isHost && player.id !== myPlayerId && !player.isHost;
+        const kickButton = canKick
+            ? `<button class="kick-btn" title="Remove player" aria-label="Remove player">✕</button>`
+            : '';
+        
         item.innerHTML = `
-      <span class="name">${escapeHtml(player.name)}</span>
-      ${player.isHost ? '<span class="badge">Host</span>' : ''}
-      ${player.isBot ? '<span class="badge">Bot</span>' : ''}
-    `;
+            <span class="name">${escapeHtml(player.name)}</span>
+            <div class="badges">${badges}</div>
+            ${kickButton}
+        `;
+        if (canKick) {
+            const kickBtn = item.querySelector('.kick-btn');
+            kickBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const label = player.isBot ? 'Remove bot?' : `Remove ${player.name}?`;
+                if (!confirm(label)) return;
+                socket.emit('kickPlayer', { roomCode: currentRoomCode, targetPlayerId: player.id }, (response) => {
+                    if (!response?.success) {
+                        showToast(response?.error || 'Could not remove player', 'error');
+                    }
+                });
+            });
+        }
         playersList.appendChild(item);
 
         if (player.id === myPlayerId) {
@@ -658,7 +726,11 @@ function updateLobbyUI(state) {
     });
 
     if (isHost) {
-        startBtn.classList.toggle('hidden', state.players.length < 2);
+        // Enable/disable start button based on player count
+        const canStart = state.players.length >= 2;
+        startBtn.disabled = !canStart;
+        startBtn.classList.remove('hidden');
+        
         if (addBotBtn) {
             addBotBtn.classList.remove('hidden');
             const isFull = state.players.length >= 10;

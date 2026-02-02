@@ -104,6 +104,11 @@ io.on('connection', (socket) => {
             return;
         }
 
+        if (room.isBanned(playerName, null)) {
+            callback({ success: false, error: 'You are banned from this room' });
+            return;
+        }
+
         if (room.players.length >= 10) {
             callback({ success: false, error: 'Room is full' });
             return;
@@ -124,6 +129,11 @@ io.on('connection', (socket) => {
 
         if (!room) {
             callback({ success: false, error: 'Room no longer exists' });
+            return;
+        }
+
+        if (room.isBanned(playerName, oldPlayerId)) {
+            callback({ success: false, error: 'You are banned from this room' });
             return;
         }
 
@@ -204,6 +214,46 @@ io.on('connection', (socket) => {
         }
 
         room.addBot();
+        saveState();
+        callback?.({ success: true });
+    });
+
+    // Kick a player (host only, lobby only)
+    socket.on('kickPlayer', (data, callback) => {
+        const { roomCode, targetPlayerId } = data || {};
+        const room = rooms.get(roomCode);
+        if (!room) {
+            callback?.({ success: false, error: 'Room not found' });
+            return;
+        }
+        if (!room.isHost(socket.id)) {
+            callback?.({ success: false, error: 'Only the host can kick players' });
+            return;
+        }
+        if (room.gameStarted) {
+            callback?.({ success: false, error: 'Cannot kick after game starts' });
+            return;
+        }
+        if (targetPlayerId === socket.id) {
+            callback?.({ success: false, error: 'You cannot kick yourself' });
+            return;
+        }
+
+        const target = room.players.find(p => p.id === targetPlayerId);
+        if (!target) {
+            callback?.({ success: false, error: 'Player not found' });
+            return;
+        }
+
+        if (target.socket) {
+            target.socket.emit('kicked', { roomCode });
+            target.socket.leave(roomCode);
+        }
+
+        room.kickPlayer(targetPlayerId);
+        if (room.players.length === 0) {
+            rooms.delete(roomCode);
+        }
         saveState();
         callback?.({ success: true });
     });

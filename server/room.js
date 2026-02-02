@@ -5,6 +5,8 @@ export class GameRoom {
         this.roomCode = roomCode;
         this.io = io;
         this.players = [];
+        this.bannedPlayerIds = new Set();
+        this.bannedPlayerNames = new Set();
         this.gameStarted = false;
         this.deck = [];
         this.discardPile = [];
@@ -29,6 +31,30 @@ export class GameRoom {
         };
         this.players.push(player);
         this.broadcastLobbyState();
+    }
+
+    normalizePlayerName(name) {
+        return (name || '').trim().toLowerCase();
+    }
+
+    isBanned(playerName, playerId) {
+        const normalizedName = this.normalizePlayerName(playerName);
+        if (playerId && this.bannedPlayerIds.has(playerId)) return true;
+        if (normalizedName && this.bannedPlayerNames.has(normalizedName)) return true;
+        return false;
+    }
+
+    kickPlayer(playerId) {
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return false;
+
+        if (!player.isBot) {
+            this.bannedPlayerIds.add(player.id);
+            this.bannedPlayerNames.add(this.normalizePlayerName(player.name));
+        }
+
+        this.removePlayer(playerId);
+        return true;
     }
 
     addBot() {
@@ -972,6 +998,8 @@ export class GameRoom {
             unoCalledBy: Array.from(this.unoCalledBy),
             winner: this.winner ? { id: this.winner.id, name: this.winner.name } : null,
             hasDrawnThisTurn: this.hasDrawnThisTurn,
+            bannedPlayerIds: Array.from(this.bannedPlayerIds),
+            bannedPlayerNames: Array.from(this.bannedPlayerNames),
             players: this.players.map(p => ({
                 id: p.id,
                 name: p.name,
@@ -995,6 +1023,8 @@ export class GameRoom {
         room.unoCalledBy = new Set(state.unoCalledBy);
         room.winner = state.winner;
         room.hasDrawnThisTurn = state.hasDrawnThisTurn || false;
+        room.bannedPlayerIds = new Set(state.bannedPlayerIds || []);
+        room.bannedPlayerNames = new Set(state.bannedPlayerNames || []);
         room.players = state.players.map(p => ({
             ...p,
             isBot: !!p.isBot,
