@@ -30,6 +30,13 @@ app.get('/', (req, res) => {
 // Game rooms storage - Load from disk on startup
 const rooms = StateManager.load(io);
 
+// Drop stale lobby rooms on startup (no active sockets after restart)
+for (const [roomCode, room] of rooms) {
+    if (!room.gameStarted) {
+        rooms.delete(roomCode);
+    }
+}
+
 // Helper to save state
 function saveState() {
     StateManager.save(rooms);
@@ -271,6 +278,18 @@ io.on('connection', (socket) => {
         for (const [roomCode, room] of rooms) {
             const player = room.players.find(p => p.id === socket.id);
             if (player) {
+                if (!room.gameStarted) {
+                    console.log(`Player ${player.name} disconnected in lobby ${roomCode}`);
+                    room.removePlayer(player.id);
+
+                    if (room.players.length === 0) {
+                        rooms.delete(roomCode);
+                        console.log(`Room ${roomCode} deleted (empty)`);
+                    }
+                    saveState();
+                    break;
+                }
+
                 // Mark player as disconnected but don't remove immediately
                 player.disconnected = true;
                 player.disconnectTime = Date.now();
