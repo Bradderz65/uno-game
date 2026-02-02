@@ -1,0 +1,493 @@
+/* ========================================
+   UNO Game - Animations
+   ======================================== */
+
+/* ========================================
+   Keyframes
+   ======================================== */
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes wildGradient {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes cardDeal {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) rotate(-10deg) scale(0.5);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) rotate(0) scale(1);
+    }
+}
+
+@keyframes cardPlay {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-100px) scale(1.2);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 0;
+    }
+}
+
+@keyframes cardDraw {
+    from {
+        opacity: 0;
+        transform: translateX(-100px) rotate(-20deg);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) rotate(0);
+    }
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-5px);
+    }
+
+    40% {
+        transform: translateX(5px);
+    }
+
+    60% {
+        transform: translateX(-5px);
+    }
+
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+@keyframes glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    50% {
+        box-shadow: 0 0 30px var(--accent-glow), 0 0 50px var(--accent-glow);
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes colorFlash {
+    0% {
+        filter: brightness(1);
+    }
+
+    50% {
+        filter: brightness(1.5);
+    }
+
+    100% {
+        filter: brightness(1);
+    }
+}
+
+/* ========================================
+   Animation Classes
+   ======================================== */
+
+.animate-deal {
+    animation: cardDeal 0.4s ease-out forwards;
+}
+
+.animate-play {
+    animation: cardPlay 0.5s ease-out forwards;
+}
+
+.animate-draw {
+    animation: cardDraw 0.3s ease-out forwards;
+}
+
+.animate-shake {
+    animation: shake 0.4s ease-out;
+}
+
+.animate-bounce {
+    animation: bounce 0.5s ease-out;
+}
+
+.animate-glow {
+    animation: glow 1.5s infinite;
+}
+
+.animate-spin {
+    animation: spin 0.5s ease-out;
+}
+
+.animate-color-flash {
+    animation: colorFlash 0.3s ease-out;
+}
+
+.fade-out {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+/* ========================================
+   Card Flip Animation
+   ======================================== */
+
+.card-flip-container {
+    perspective: 1000px;
+}
+
+.card-flipper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+}
+
+.card-flipper.flipped {
+    transform: rotateY(180deg);
+}
+
+.card-front,
+.card-back-flip {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+}
+
+.card-back-flip {
+    transform: rotateY(180deg);
+}
+
+/* ========================================
+   Staggered Animations for Hand
+   ======================================== */
+
+.hand-card:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.hand-card:nth-child(2) {
+    animation-delay: 0.05s;
+}
+
+.hand-card:nth-child(3) {
+    animation-delay: 0.1s;
+}
+
+.hand-card:nth-child(4) {
+    animation-delay: 0.15s;
+}
+
+.hand-card:nth-child(5) {
+    animation-delay: 0.2s;
+}
+
+.hand-card:nth-child(6) {
+    animation-delay: 0.25s;
+}
+
+.hand-card:nth-child(7) {
+    animation-delay: 0.3s;
+}
+
+.hand-card:nth-child(8) {
+    animation-delay: 0.35s;
+}
+
+.hand-card:nth-child(9) {
+    animation-delay: 0.4s;
+}
+
+.hand-card:nth-child(10) {
+    animation-delay: 0.45s;
+}
+
+.hand-card:nth-child(n+11) {
+    animation-delay: 0.5s;
+}
+
+/* ========================================
+   UNO Call Animation
+   ======================================== */
+
+.uno-call-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 150;
+    pointer-events: none;
+}
+
+.uno-call-text {
+    font-size: 5rem;
+    font-weight: 800;
+    color: var(--uno-red);
+    text-shadow: 0 0 30px var(--uno-red), 0 0 60px var(--uno-red);
+    animation: unoCall 1s ease-out forwards;
+}
+
+@keyframes unoCall {
+    0% {
+        opacity: 0;
+        transform: scale(0.3) rotate(-10deg);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.2) rotate(5deg);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* ========================================
+   Winner Celebration
+   ======================================== */
+
+.confetti {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    z-index: 200;
+    pointer-events: none;
+}
+
+@keyframes confettiFall {
+    0% {
+        opacity: 1;
+        transform: translateY(-100vh) rotate(0deg);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(100vh) rotate(720deg);
+    }
+}
+
+/* ========================================
+   Turn Indicator Pulse
+   ======================================== */
+
+.your-turn {
+    animation: yourTurn 1s infinite;
+}
+
+@keyframes yourTurn {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 var(--accent-glow);
+    }
+
+    50% {
+        box-shadow: 0 0 0 10px transparent;
+    }
+}
+
+/* ========================================
+   Card Hover Tilt Effect
+   ======================================== */
+
+.card.playable {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card.playable:hover {
+    transform: translateY(-15px) rotateZ(2deg);
+}
+
+/* Different tilt for alternating cards */
+.hand-card:nth-child(even) .card.playable:hover {
+    transform: translateY(-15px) rotateZ(-2deg);
+}
+
+/* ========================================
+   Draw Pile Hover Effect
+   ======================================== */
+
+#draw-pile {
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+}
+
+#draw-pile:hover {
+    transform: scale(1.05);
+}
+
+#draw-pile:active {
+    transform: scale(0.98);
+}
+
+/* ========================================
+   Color Change Transition
+   ======================================== */
+
+.color-change {
+    animation: colorChange 0.5s ease-out;
+}
+
+@keyframes colorChange {
+    0% {
+        filter: brightness(1);
+        transform: scale(1);
+    }
+
+    50% {
+        filter: brightness(1.5);
+        transform: scale(1.1);
+    }
+
+    100% {
+        filter: brightness(1);
+        transform: scale(1);
+    }
+}
+
+/* ========================================
+   Loading Spinner
+   ======================================== */
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--bg-card);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* ========================================
+   Reduced Motion
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

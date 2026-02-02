@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>UNO - Multiplayer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/styles.css">
+  <link rel="stylesheet" href="/src/animations.css">
+</head>
+
+<body>
+  <div id="app">
+    <!-- Lobby Screen -->
+    <div id="lobby-screen" class="screen active">
+      <div class="lobby-container">
+        <h1 class="game-title">
+          <span class="letter red">U</span><span class="letter yellow">N</span><span class="letter green">O</span>
+        </h1>
+        <p class="subtitle">Multiplayer Card Game</p>
+
+        <div id="join-section" class="lobby-section">
+          <input type="text" id="player-name" placeholder="Your Name" maxlength="12" autocomplete="off">
+
+          <div class="button-group">
+            <button id="create-btn" class="btn btn-primary">
+              <span class="btn-icon">+</span>
+              Create Game
+            </button>
+            
+            <!-- Room List (Visible if games exist) -->
+            <div id="rooms-browser" class="rooms-browser">
+              <div class="rooms-header">
+                <h3>Available Games</h3>
+                <button id="refresh-rooms-btn" class="btn-icon-only" title="Refresh">🔄</button>
+              </div>
+              <div id="rooms-list" class="rooms-list">
+                <div class="no-rooms">Searching for games...</div>
+              </div>
+            </div>
+
+            <!-- Advanced Join -->
+            <details class="advanced-join">
+              <summary>Advanced: Join by Code</summary>
+              <div class="join-row">
+                <input type="text" id="room-code" placeholder="ROOM CODE" maxlength="4" autocomplete="off">
+                <button id="join-btn" class="btn btn-secondary">Join</button>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div id="waiting-section" class="lobby-section hidden">
+          <div class="room-info">
+            <span class="room-label">Room Code</span>
+            <span id="display-room-code" class="room-code">----</span>
+          </div>
+
+          <div class="players-list" id="players-list">
+            <!-- Players will be inserted here -->
+          </div>
+
+          <div id="game-settings" class="game-settings hidden">
+             <label for="starting-cards">Starting Cards:</label>
+             <input type="number" id="starting-cards" value="7" min="1" max="20">
+          </div>
+
+          <button id="add-bot-btn" class="btn btn-secondary btn-full hidden">
+            Add Bot
+          </button>
+
+          <button id="start-btn" class="btn btn-primary btn-large hidden">
+            Start Game
+          </button>
+          <p id="waiting-text" class="waiting-text">Waiting for host to start...</p>
+          <button id="leave-lobby-btn" class="btn btn-secondary btn-full leave-btn">
+            Leave Room
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+      <div class="game-header">
+        <div class="game-info">
+          <div class="current-turn">
+            <span class="turn-label">Turn:</span>
+            <span id="current-player-name">---</span>
+          </div>
+          <div class="direction-indicator" id="direction-indicator">↻</div>
+        </div>
+        <div class="header-right">
+          <button id="leave-game-btn" class="btn-icon-only" title="Leave Game">🚪</button>
+          <button id="sound-toggle" class="btn-icon-only" title="Toggle Sound">🔊</button>
+          <div class="room-badge" id="game-room-code">----</div>
+        </div>
+      </div>
+
+      <div class="game-area">
+        <!-- Other Players -->
+        <div class="opponents-area" id="opponents-area">
+          <!-- Opponent cards will be inserted here -->
+        </div>
+
+        <!-- Center Play Area -->
+        <div class="center-area">
+          <div class="deck-area">
+            <div class="card-stack deck" id="draw-pile">
+              <div class="card card-back">
+                <div class="card-back-design">UNO</div>
+              </div>
+              <span class="deck-count" id="deck-count">0</span>
+            </div>
+
+            <div class="card-stack discard" id="discard-pile">
+              <!-- Top card will be inserted here -->
+            </div>
+          </div>
+
+          <div class="draw-stack-indicator hidden" id="draw-stack">
+            <span>+<span id="draw-stack-count">0</span></span>
+          </div>
+        </div>
+
+        <!-- Player Hand -->
+        <div class="player-hand-area">
+          <div class="hand-container" id="player-hand">
+            <!-- Player's cards will be inserted here -->
+          </div>
+
+          <div class="action-buttons">
+            <button class="btn btn-action" id="draw-btn">
+              <span class="btn-icon">📥</span>
+              Draw
+            </button>
+            <button class="btn btn-secondary hidden" id="pass-btn">
+              <span class="btn-icon">⏭️</span>
+              Pass
+            </button>
+            <button class="btn btn-primary disabled" id="play-btn" disabled>
+              Play (<span id="selected-count">0</span>)
+            </button>
+            <button class="btn btn-uno hidden" id="uno-btn">
+              UNO!
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Catch UNO Panel -->
+      <div class="catch-panel hidden" id="catch-panel">
+        <span class="catch-label">Catch!</span>
+        <div id="catch-buttons">
+          <!-- Catch buttons will be inserted here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Color Picker Modal -->
+    <div class="modal hidden" id="color-modal">
+      <div class="modal-content color-picker">
+        <h3>Choose a Color</h3>
+        <div class="color-options">
+          <button class="color-btn red" data-color="red"></button>
+          <button class="color-btn yellow" data-color="yellow"></button>
+          <button class="color-btn green" data-color="green"></button>
+          <button class="color-btn blue" data-color="blue"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal hidden" id="gameover-modal">
+      <div class="modal-content gameover">
+        <h2 id="winner-text">🎉 Winner! 🎉</h2>
+        <div class="scores" id="scores-list">
+          <!-- Scores will be inserted here -->
+        </div>
+        <button class="btn btn-primary" id="play-again-btn">Play Again</button>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
