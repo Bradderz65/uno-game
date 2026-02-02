@@ -549,6 +549,9 @@ export class GameRoom {
         const bot = this.players[playerIndex];
         if (!bot.isBot || this.isDealing || this.winner) return;
 
+        // Bot tries to catch opponents who forgot UNO before playing
+        this.botTryCatchUno(botId);
+
         const topCard = this.discardPile[this.discardPile.length - 1];
         let playableGroups = this.getBotPlayableGroups(bot.hand, topCard, this.currentColor, this.drawStack);
         const hasLegalPlay = this.hasLegalPlay(bot, topCard, this.currentColor, this.drawStack);
@@ -565,7 +568,7 @@ export class GameRoom {
 
         if (this.drawStack > 0) {
             if (playableGroups.length > 0) {
-                const selection = this.chooseBotPlay(bot.hand, playableGroups);
+                const selection = this.chooseBotPlay(bot.hand, playableGroups, topCard, this.currentColor);
                 if (!selection) return;
                 const chosenColor = this.getBotWildColor(bot.hand, selection.indices[0]);
                 if (this.shouldBotCallUno(bot.hand, selection.indices.length)) {
@@ -588,7 +591,7 @@ export class GameRoom {
             return;
         }
 
-        const selection = this.chooseBotPlay(bot.hand, playableGroups);
+        const selection = this.chooseBotPlay(bot.hand, playableGroups, topCard, this.currentColor);
         if (!selection) return;
         const chosenColor = this.getBotWildColor(bot.hand, selection.indices[0]);
         if (this.shouldBotCallUno(bot.hand, selection.indices.length)) {
@@ -659,7 +662,8 @@ export class GameRoom {
         return false;
     }
 
-    chooseBotPlay(hand, playableGroups) {
+    chooseBotPlay(hand, playableGroups, topCard, currentColor) {
+        // Count colors in hand (for wild color choice later)
         const colorCounts = { red: 0, yellow: 0, green: 0, blue: 0 };
         hand.forEach(card => {
             if (colorCounts[card.color] !== undefined) {
@@ -667,38 +671,105 @@ export class GameRoom {
             }
         });
 
+        // Get info about next player
+        const nextPlayerInfo = this.getNextPlayerInfo();
+        const nextPlayerCards = nextPlayerInfo?.handSize || 7;
+        const nextPlayerIsDangerous = nextPlayerCards <= 2;
+        const isEndgame = hand.length <= 3 || this.players.some(p => p.hand.length <= 2);
+
         let bestSelection = null;
         let bestScore = -Infinity;
+
         for (const group of playableGroups) {
             const card = group.card;
             let playCount = group.indices.length;
-
+            const cardsAfterPlay = hand.length - playCount;
+            const wouldWin = cardsAfterPlay === 0;
             const isSpecial = card.type !== CARD_TYPES.NUMBER;
-            const wouldEmptyHand = hand.length - playCount === 0;
-            if (isSpecial && wouldEmptyHand) {
+
+            // Don't play special cards to win (must use number cards)
+            if (isSpecial && wouldWin) {
                 if (playCount > 1) {
+                    // Can play multiple - only play enough to leave 1 card
                     playCount -= 1;
                 } else {
+                    // Skip this option - can't win with special card
                     continue;
                 }
             }
 
             let score = 0;
-            score += playCount * 10;
 
-            if (card.color !== 'wild') {
-                score += 5;
-                score += colorCounts[card.color] || 0;
+            // === WINNING PRIORITY ===
+            if (cardsAfterPlay === 0) {
+                // Highest priority: winning the game
+                score += 10000;
+            } else if (cardsAfterPlay === 1) {
+                // Second priority: getting to UNO
+                score += 500;
             }
 
-            if (card.type === CARD_TYPES.NUMBER) {
-                score += 2;
+            // === OFFENSIVE PLAY BONUSES ===
+            // When opponent is dangerous (has 1-2 cards), prioritize attack cards
+            if (nextPlayerIsDangerous) {
+                if (card.type === CARD_TYPES.DRAW_TWO) score += 200;
+                if (card.type === CARD_TYPES.WILD_DRAW_FOUR) score += 250;
+                if (card.type === CARD_TYPES.SKIP) score += 150;
+                if (card.type === CARD_TYPES.REVERSE) score += 100;
+            }
+
+            // === MULTI-CARD BONUS ===
+            // Playing multiple cards is generally good
+            score += playCount * 15;
+
+            // === COLOR STRATEGY ===
+            // Prefer colors we have the most of (so we can keep playing)
+            const effectiveColor = card.color === 'wild' ? currentColor : card.color;
+            if (effectiveColor && colorCounts[effectiveColor]) {
+                score += colorCounts[effectiveColor] * 3;
+            }
+
+            // === CARD TYPE PRIORITIES ===
+            // In endgame, prefer action cards to disrupt opponents
+            if (isEndgame) {
+                if (card.type === CARD_TYPES.NUMBER) {
+                    score += 5; // Still good to play numbers
+                } else if (card.type === CARD_TYPES.DRAW_TWO) {
+                    score += 20; // Great for offense
+                } else if (card.type === CARD_TYPES.SKIP) {
+                    score += 15; // Good for skipping dangerous players
+                } else if (card.type === CARD_TYPES.REVERSE) {
+                    score += 10; // Can redirect to safer player
+                } else if (card.type === CARD_TYPES.WILD) {
+                    score += 8; // Flexibility
+                } else if (card.type === CARD_TYPES.WILD_DRAW_FOUR) {
+                    score += 25; // Best offensive card
+                }
             } else {
-                score += 1;
+                // Early/mid game: conserve action cards, play numbers
+                if (card.type === CARD_TYPES.NUMBER) {
+                    score += 20; // Preferred early
+                } else if (card.type === CARD_TYPES.SKIP || card.type === CARD_TYPES.REVERSE) {
+                    score -= 5; // Save for later
+                } else if (card.type === CARD_TYPES.DRAW_TWO) {
+                    score -= 3; // Save for when needed
+                } else if (card.type === CARD_TYPES.WILD) {
+                    score -= 10; // Save wild cards for emergencies
+                } else if (card.type === CARD_TYPES.WILD_DRAW_FOUR) {
+                    score -= 15; // Save +4 for desperate situations or endgame
+                }
             }
 
-            if (card.type === CARD_TYPES.WILD_DRAW_FOUR) {
-                score -= 1;
+            // === SAVING CARDS BONUS ===
+            // If we have 2+ of same card type, playing them is good
+            if (playCount >= 2) {
+                score += 10;
+            }
+
+            // === PENALTIES ===
+            // Don't waste wild cards on small advantages
+            if (card.color === 'wild' && !isEndgame && !nextPlayerIsDangerous) {
+                score -= 20;
             }
 
             if (score > bestScore) {
@@ -716,26 +787,92 @@ export class GameRoom {
         return bestSelection;
     }
 
+    getNextPlayerInfo() {
+        if (this.players.length <= 1) return null;
+        const nextIndex = (this.currentPlayerIndex + this.direction + this.players.length) % this.players.length;
+        const nextPlayer = this.players[nextIndex];
+        return nextPlayer ? { id: nextPlayer.id, handSize: nextPlayer.hand.length, isBot: nextPlayer.isBot } : null;
+    }
+
+    botTryCatchUno(botId) {
+        // Bot looks for players with 1 card who forgot to call UNO
+        // Bots have a high chance (85%) to catch to make them competitive
+        const victims = this.players.filter(p => 
+            p.id !== botId && 
+            p.hand.length === 1 && 
+            !this.unoCalledBy.has(p.id)
+        );
+
+        for (const victim of victims) {
+            // 85% chance to catch (bots are good but not perfect)
+            if (Math.random() < 0.85) {
+                console.log(`[Room ${this.roomCode}] Bot caught ${victim.name} forgetting UNO!`);
+                this.catchUno(botId, victim.id);
+            }
+        }
+    }
+
     getBotWildColor(hand, wildIndex) {
         const card = hand[wildIndex];
         if (!card || card.color !== 'wild') return undefined;
 
+        // If this is the last card, we shouldn't be playing a wild (number card required)
+        if (hand.length === 1) return 'red'; // Fallback
+
         const colorCounts = { red: 0, yellow: 0, green: 0, blue: 0 };
+        const colorPlayability = { red: 0, yellow: 0, green: 0, blue: 0 };
+
         hand.forEach((c, idx) => {
             if (idx === wildIndex) return;
             if (colorCounts[c.color] !== undefined) {
                 colorCounts[c.color] += 1;
+                // Bonus for cards that can be played next (numbers are more versatile)
+                if (c.type === CARD_TYPES.NUMBER) {
+                    colorPlayability[c.color] += 2;
+                } else {
+                    colorPlayability[c.color] += 1;
+                }
             }
         });
 
+        // Get next player's info
+        const nextPlayer = this.getNextPlayerInfo();
+        const nextPlayerIsDangerous = nextPlayer && nextPlayer.handSize <= 2;
+
         let bestColor = 'red';
-        let bestCount = -1;
+        let bestScore = -Infinity;
+
         for (const color of COLORS) {
-            if (colorCounts[color] > bestCount) {
-                bestCount = colorCounts[color];
+            let score = 0;
+            const count = colorCounts[color];
+
+            // Base score: number of cards of this color
+            score += count * 10;
+
+            // Bonus for playability
+            score += colorPlayability[color] * 3;
+
+            // Prefer colors where we have action cards if next player is dangerous
+            if (nextPlayerIsDangerous) {
+                const hasSkip = hand.some(c => c.color === color && c.type === CARD_TYPES.SKIP);
+                const hasDrawTwo = hand.some(c => c.color === color && c.type === CARD_TYPES.DRAW_TWO);
+                const hasReverse = hand.some(c => c.color === color && c.type === CARD_TYPES.REVERSE);
+                
+                if (hasDrawTwo) score += 15;
+                if (hasSkip) score += 10;
+                if (hasReverse) score += 5;
+            }
+
+            // Prefer colors with number cards (easier to play and can win with them)
+            const hasNumber = hand.some(c => c.color === color && c.type === CARD_TYPES.NUMBER);
+            if (hasNumber) score += 8;
+
+            if (score > bestScore) {
+                bestScore = score;
                 bestColor = color;
             }
         }
+
         return bestColor;
     }
 
