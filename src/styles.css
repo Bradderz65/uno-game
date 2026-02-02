@@ -1702,7 +1702,7 @@ input:checked + .slider:before {
   }
 
   .game-title {
-    font-size: 3rem;
+    font-size: 4.25rem;
   }
 
   .lobby-container {
