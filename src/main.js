@@ -181,7 +181,7 @@ function updateUnoButtonVisibility(state) {
                 const selectedCards = indices.map(i => hand[i]);
 
                 // Must be compatible and the first card must be playable on the pile
-                if (areCardsCompatible(selectedCards) && canPlayCard(selectedCards[0], topCard, currentColor, drawStack)) {
+                if (areCardsCompatible(selectedCards) && isLegalPlayableCard(selectedCards[0], hand.length, topCard, currentColor, drawStack)) {
                     showUno = true;
                 }
             }
@@ -189,7 +189,7 @@ function updateUnoButtonVisibility(state) {
             // No selection case: Do we have 1-2 cards AND at least one is playable?
             // 2 cards = going to 1, 1 card = chipping out
             if (hand.length <= 2) {
-                const hasPlayable = hand.some(card => canPlayCard(card, topCard, currentColor, drawStack));
+                const hasPlayable = hand.some(card => isLegalPlayableCard(card, hand.length, topCard, currentColor, drawStack));
                 if (hasPlayable) {
                     showUno = true;
                 }
@@ -703,7 +703,7 @@ function updateGameUI(state) {
         // Disable draw button if:
         // 1. Player has playable cards (and no stack)
         // 2. Player has already drawn this turn
-        const hasPlayableCard = state.hand.some(card => canPlayCard(card, state.topCard, state.currentColor, state.drawStack));
+        const hasPlayableCard = state.hand.some(card => isLegalPlayableCard(card, state.hand.length, state.topCard, state.currentColor, state.drawStack));
 
         if (state.hasDrawnThisTurn) {
             drawBtn.disabled = true;
@@ -928,7 +928,7 @@ if (!playerHand.hasAttribute('data-listener-attached')) {
         const drawStack = game.state.drawStack;
         const isMyTurn = game.state.currentPlayerId === myPlayerId;
 
-        const canPlay = isMyTurn && canPlayCard(card, topCard, currentColor, drawStack);
+        const canPlay = isMyTurn && isLegalPlayableCard(card, hand.length, topCard, currentColor, drawStack);
 
         // Smart Switch Logic
         if (selectedCardIndices.has(index)) {
@@ -993,7 +993,7 @@ function updateHandVisuals() {
         } else {
             // No selection: Match against Pile (standard rules)
             // Reuse the existing canPlayCard logic which handles Pile, Color, Stack
-            isPlayable = game.isMyTurn && canPlayCard(card, game.state.topCard, game.state.currentColor, game.state.drawStack);
+            isPlayable = game.isMyTurn && isLegalPlayableCard(card, hand.length, game.state.topCard, game.state.currentColor, game.state.drawStack);
         }
 
         if (isPlayable) {
@@ -1073,6 +1073,16 @@ function canPlayCard(card, topCard, currentColor, drawStack) {
     }
 
     return false;
+}
+
+function isLegalPlayableCard(card, handSize, topCard, currentColor, drawStack) {
+    if (!canPlayCard(card, topCard, currentColor, drawStack)) return false;
+
+    if (handSize === 1 && card.type !== 'number') {
+        return false;
+    }
+
+    return true;
 }
 
 function showCatchPanel(players) {

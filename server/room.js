@@ -320,7 +320,7 @@ export class GameRoom {
             this.winner = player;
             this.io.to(this.roomCode).emit('gameOver', {
                 winner: { id: player.id, name: player.name },
-                scores: this.calculateScores()
+                scores: this.calculateScores(player.id)
             });
             return;
         }
@@ -422,10 +422,10 @@ export class GameRoom {
             return;
         }
 
-        // If no draw stack, check if they have any playable cards
+        // If no draw stack, check if they have any legal plays
         if (this.drawStack === 0) {
-            const hasPlayableCard = player.hand.some(card => canPlayCard(card, topCard, this.currentColor));
-            if (hasPlayableCard) {
+            const hasLegalPlay = this.hasLegalPlay(player, topCard, this.currentColor, this.drawStack);
+            if (hasLegalPlay) {
                 console.log(`[Room ${this.roomCode}] ${player.name} tried to draw but has playable cards.`);
                 return;
             }
@@ -551,9 +551,14 @@ export class GameRoom {
 
         const topCard = this.discardPile[this.discardPile.length - 1];
         let playableGroups = this.getBotPlayableGroups(bot.hand, topCard, this.currentColor, this.drawStack);
+        const hasLegalPlay = this.hasLegalPlay(bot, topCard, this.currentColor, this.drawStack);
+
+        if (!hasLegalPlay && this.drawStack === 0) {
+            playableGroups = [];
+        }
         if (this.drawStack === 0) {
             const hasPlayableCard = bot.hand.some(card => canPlayCard(card, topCard, this.currentColor));
-            if (hasPlayableCard && playableGroups.length === 0) {
+            if (hasPlayableCard && playableGroups.length === 0 && hasLegalPlay) {
                 playableGroups = this.getBotSinglePlayableGroups(bot.hand, topCard, this.currentColor);
             }
         }
@@ -629,6 +634,31 @@ export class GameRoom {
         return playableGroups;
     }
 
+    hasLegalPlay(player, topCard, currentColor, drawStack) {
+        if (!player || !topCard) return false;
+
+        if (drawStack > 0) {
+            return player.hand.some(card =>
+                (topCard.type === CARD_TYPES.DRAW_TWO && card.type === CARD_TYPES.DRAW_TWO) ||
+                (topCard.type === CARD_TYPES.WILD_DRAW_FOUR && card.type === CARD_TYPES.WILD_DRAW_FOUR)
+            );
+        }
+
+        for (const card of player.hand) {
+            if (!canPlayCard(card, topCard, currentColor)) continue;
+
+            if (player.hand.length === 1) {
+                if (card.type !== CARD_TYPES.NUMBER) {
+                    continue;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
     chooseBotPlay(hand, playableGroups) {
         const colorCounts = { red: 0, yellow: 0, green: 0, blue: 0 };
         hand.forEach(card => {
@@ -645,12 +675,12 @@ export class GameRoom {
 
             const isSpecial = card.type !== CARD_TYPES.NUMBER;
             const wouldEmptyHand = hand.length - playCount === 0;
-            if (isSpecial && wouldEmptyHand && playCount > 1) {
-                playCount -= 1;
-            }
-
-            if (playCount <= 0) {
-                continue;
+            if (isSpecial && wouldEmptyHand) {
+                if (playCount > 1) {
+                    playCount -= 1;
+                } else {
+                    continue;
+                }
             }
 
             let score = 0;
@@ -713,7 +743,7 @@ export class GameRoom {
         return (hand.length - cardsToPlayCount) <= 1;
     }
 
-    calculateScores() {
+    calculateScores(winnerId = null) {
         const handValues = this.players.map(p => ({
             id: p.id,
             name: p.name,
@@ -725,11 +755,12 @@ export class GameRoom {
         }));
 
         const totalPoints = handValues.reduce((sum, p) => sum + p.points, 0);
+        const resolvedWinnerId = winnerId || this.winner?.id;
 
         return handValues.map(p => {
             // If this player is the winner, they get the total sum of all hands
             // (Their own hand is empty/0, so this is sum of all opponents)
-            if (this.winner && p.id === this.winner.id) {
+            if (resolvedWinnerId && p.id === resolvedWinnerId) {
                 return { ...p, points: totalPoints };
             }
             return p;
