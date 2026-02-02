@@ -1114,22 +1114,29 @@ function showGameOver(data) {
     winnerText.textContent = `🎉 ${data.winner.name} Wins! 🎉`;
 
     scoresList.innerHTML = '';
-    data.scores
-        .sort((a, b) => a.points - b.points)
-        .forEach(score => {
-            const item = document.createElement('div');
-            item.className = `score-item ${score.id === data.winner.id ? 'winner' : ''}`;
-            item.innerHTML = `
+    // Scores are already sorted by server (1st place first)
+    data.scores.forEach((score, index) => {
+        const rank = index + 1;
+        const ordinal = getOrdinal(rank);
+        const item = document.createElement('div');
+        item.className = `score-item ${score.id === data.winner.id ? 'winner' : ''}`;
+        item.innerHTML = `
         <span>${escapeHtml(score.name)}</span>
-        <span>${score.points} pts</span>
+        <span>${ordinal}</span>
       `;
-            scoresList.appendChild(item);
-        });
+        scoresList.appendChild(item);
+    });
 
     gameoverModal.classList.remove('hidden');
 
     // Show confetti
     createConfetti();
+}
+
+function getOrdinal(n) {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 // ========================================

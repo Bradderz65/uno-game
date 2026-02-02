@@ -744,9 +744,14 @@ export class GameRoom {
     }
 
     calculateScores(winnerId = null) {
+        const resolvedWinnerId = winnerId || this.winner?.id;
+        
+        // Calculate hand values for ranking
         const handValues = this.players.map(p => ({
             id: p.id,
             name: p.name,
+            handSize: p.hand.length,
+            // Points for tie-breaking (lower is better, except winner has 0)
             points: p.hand.reduce((sum, card) => {
                 if (card.type === CARD_TYPES.NUMBER) return sum + card.value;
                 if (card.type === CARD_TYPES.WILD || card.type === CARD_TYPES.WILD_DRAW_FOUR) return sum + 50;
@@ -754,16 +759,15 @@ export class GameRoom {
             }, 0)
         }));
 
-        const totalPoints = handValues.reduce((sum, p) => sum + p.points, 0);
-        const resolvedWinnerId = winnerId || this.winner?.id;
-
-        return handValues.map(p => {
-            // If this player is the winner, they get the total sum of all hands
-            // (Their own hand is empty/0, so this is sum of all opponents)
-            if (resolvedWinnerId && p.id === resolvedWinnerId) {
-                return { ...p, points: totalPoints };
-            }
-            return p;
+        // Sort: winner first, then by hand size (asc), then by points (asc) as tiebreaker
+        return handValues.sort((a, b) => {
+            // Winner always comes first
+            if (a.id === resolvedWinnerId) return -1;
+            if (b.id === resolvedWinnerId) return 1;
+            // Then sort by hand size (fewer cards = better rank)
+            if (a.handSize !== b.handSize) return a.handSize - b.handSize;
+            // Then by point value as tiebreaker
+            return a.points - b.points;
         });
     }
 
