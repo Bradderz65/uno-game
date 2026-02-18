@@ -7,7 +7,8 @@ echo "========================================"
 echo ""
 
 # Start the server in background and capture logs
-node server/index.js > server.log 2>&1 &
+PORT=${PORT:-3002}
+PORT=$PORT node server/index.js > server.log 2>&1 &
 SERVER_PID=$!
 
 # Cleanup function to be called on exit
@@ -15,7 +16,6 @@ cleanup() {
     echo ""
     echo "Stopping server..."
     kill $SERVER_PID 2>/dev/null
-    rm server.log 2>/dev/null
     echo "Done!"
     exit
 }
@@ -32,6 +32,12 @@ while ! grep -q "UNO Server Started" server.log; do
     count=$((count+1))
     if [ $count -ge $max_attempts ]; then
         echo "Error: Server failed to start or log output not found."
+        if [ -f server.log ]; then
+            echo ""
+            echo "---- server.log ----"
+            tail -n 50 server.log
+            echo "--------------------"
+        fi
         cleanup
     fi
 done
@@ -45,7 +51,7 @@ NETWORK_URL=$(grep "Network:" server.log | head -n 1 | awk '{print $2}')
 echo "Opening browser..."
 echo ""
 echo "========================================"
-echo "   Local:   http://localhost:3000"
+echo "   Local:   http://localhost:$PORT"
 echo "   Network: $NETWORK_URL"
 echo "========================================"
 echo ""
@@ -54,9 +60,9 @@ echo ""
 
 # Open browser based on OS (Linux/macOS)
 if command -v xdg-open > /dev/null; then
-  xdg-open http://localhost:3000
+  xdg-open http://localhost:$PORT
 elif command -v open > /dev/null; then
-  open http://localhost:3000
+  open http://localhost:$PORT
 fi
 
 echo "Press Ctrl+C to stop the server and exit..."

@@ -389,6 +389,7 @@ function generateRoomCode() {
     return code;
 }
 
+// Default to 3000 so Vite (dev) can proxy `/socket.io` to it, and README stays correct.
 const PORT = process.env.PORT || 3000;
 const localIP = getLocalIP();
 
