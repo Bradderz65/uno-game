@@ -1,12 +1,48 @@
-import { io } from 'https://cdn.socket.io/4.7.2/socket.io.esm.min.js';
 import { GameClient } from './game-client.js';
 import { sounds } from './sounds.js';
+
+;(async () => {
 
 // Connect to server
 const socketOrigin = window.location.port && window.location.port !== '3000'
     ? `${window.location.protocol}//${window.location.hostname}:3000`
     : window.location.origin;
-const socket = io(socketOrigin);
+
+function loadScriptOnce(src) {
+    const existing = Array.from(document.scripts).find(s => s.src === src);
+    if (existing) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+        document.head.appendChild(script);
+    });
+}
+
+async function getSocketIoGlobal(socketOriginForClient) {
+    if (typeof window.io === 'function') return window.io;
+
+    // Prefer the locally-served client from our Socket.IO server so the game works offline.
+    await loadScriptOnce(`${socketOriginForClient}/socket.io/socket.io.js`);
+
+    if (typeof window.io !== 'function') {
+        throw new Error('Socket.IO client loaded, but window.io is not available');
+    }
+    return window.io;
+}
+
+let socket;
+try {
+    const ioGlobal = await getSocketIoGlobal(socketOrigin);
+    socket = ioGlobal(socketOrigin);
+} catch (err) {
+    console.error(err);
+    alert('Failed to initialize networking (Socket.IO). Is the server running on port 3000?');
+    throw err;
+}
 
 // Initialize game client
 const game = new GameClient(socket);
@@ -97,7 +133,6 @@ function areCardsCompatible(cards) {
         const sameValue = first.type === current.type && first.value == current.value;
 
         if (!sameValue) {
-            console.log('Compatibility check failed (must match value/type):', first, current);
             return false;
         }
     }
@@ -167,36 +202,8 @@ function updateMultiPlayUI() {
 function updateUnoButtonVisibility(state) {
     if (!state || !state.hand) return;
 
-    let showUno = false;
-    if (state.currentPlayerId === myPlayerId) {
-        const hand = state.hand;
-        const topCard = state.topCard;
-        const currentColor = state.currentColor;
-        const drawStack = state.drawStack;
-
-        if (selectedCardIndices.size > 0) {
-            // Multi-play/Selection case: Does this selection leave 1 card OR chip out (0 cards)?
-            const cardsRemaining = hand.length - selectedCardIndices.size;
-            if (cardsRemaining <= 1) {
-                const indices = Array.from(selectedCardIndices);
-                const selectedCards = indices.map(i => hand[i]);
-
-                // Must be compatible and the first card must be playable on the pile
-                if (areCardsCompatible(selectedCards) && isLegalPlayableCard(selectedCards[0], hand.length, topCard, currentColor, drawStack)) {
-                    showUno = true;
-                }
-            }
-        } else {
-            // No selection case: Do we have 1-2 cards AND at least one is playable?
-            // 2 cards = going to 1, 1 card = chipping out
-            if (hand.length <= 2) {
-                const hasPlayable = hand.some(card => isLegalPlayableCard(card, hand.length, topCard, currentColor, drawStack));
-                if (hasPlayable) {
-                    showUno = true;
-                }
-            }
-        }
-    }
+    const hand = state.hand;
+    const showUno = hand.length === 1 && !state.hasCalledUno;
 
     if (showUno) {
         unoBtn.classList.remove('hidden');
@@ -827,15 +834,27 @@ function updateDiscardPile(topCard, currentColor) {
     discardPile.innerHTML = '';
     const cardEl = createCardElement(topCard, false);
 
-    // Add color indicator for wild cards
-    if (topCard.color === 'wild' && currentColor) {
-        const indicator = document.createElement('div');
-        indicator.className = `color-indicator ${currentColor}`;
-        indicator.style.background = `var(--uno-${currentColor})`;
-        cardEl.appendChild(indicator);
+    // Add a high-contrast chosen-color indicator for wild / +4 cards.
+    if (isWildCard(topCard) && currentColor && currentColor !== 'wild') {
+        applyChosenColorIndicator(cardEl, currentColor);
     }
 
     discardPile.appendChild(cardEl);
+}
+
+function isWildCard(card) {
+    return card?.color === 'wild' || card?.type === 'wild' || card?.type === 'wild_draw_four';
+}
+
+function applyChosenColorIndicator(cardEl, chosenColor) {
+    cardEl.classList.add('has-chosen-color');
+    cardEl.style.setProperty('--chosen-color', `var(--uno-${chosenColor})`);
+
+    const indicator = document.createElement('div');
+    indicator.className = `color-indicator ${chosenColor}`;
+    indicator.style.background = `var(--uno-${chosenColor})`;
+    indicator.textContent = chosenColor.toUpperCase();
+    cardEl.appendChild(indicator);
 }
 
 function updateOpponents(players, currentPlayerId) {
@@ -1275,11 +1294,8 @@ function animateCardPlayToDiscard(card, chosenColor) {
     const tempCard = createCardElement(card);
     tempCard.classList.add('drawing-card-temp', 'playing-card-temp');
 
-    if (card.color === 'wild' && chosenColor) {
-        const indicator = document.createElement('div');
-        indicator.className = `color-indicator ${chosenColor}`;
-        indicator.style.background = `var(--uno-${chosenColor})`;
-        tempCard.appendChild(indicator);
+    if (isWildCard(card) && chosenColor && chosenColor !== 'wild') {
+        applyChosenColorIndicator(tempCard, chosenColor);
     }
 
     tempCard.style.position = 'fixed';
@@ -1319,11 +1335,8 @@ function animateHandCardToDiscard(cardEl, card, chosenColor, startRectOverride) 
     const tempCard = createCardElement(card);
     tempCard.classList.add('drawing-card-temp', 'playing-card-temp');
 
-    if (card.color === 'wild' && chosenColor) {
-        const indicator = document.createElement('div');
-        indicator.className = `color-indicator ${chosenColor}`;
-        indicator.style.background = `var(--uno-${chosenColor})`;
-        tempCard.appendChild(indicator);
+    if (isWildCard(card) && chosenColor && chosenColor !== 'wild') {
+        applyChosenColorIndicator(tempCard, chosenColor);
     }
 
     tempCard.style.position = 'fixed';
@@ -1543,3 +1556,5 @@ roomCodeInput.addEventListener('keypress', (e) => {
 if (import.meta.hot) {
     import.meta.hot.accept();
 }
+
+})();

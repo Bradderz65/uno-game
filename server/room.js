@@ -302,9 +302,9 @@ export class GameRoom {
             return;
         }
 
-        // UNO ENFORCEMENT: Check if player needs to have called UNO
-        // Player needs UNO if: going to 1 card OR chipping out (going to 0 cards)
-        const needsUno = cardsRemainingAfterPlay <= 1;
+        // UNO ENFORCEMENT: Player must call UNO only when they currently have exactly 1 card.
+        // That means UNO is required only before chipping out (going from 1 to 0).
+        const needsUno = player.hand.length === 1;
         
         if (needsUno && !this.unoCalledBy.has(playerId)) {
             // Player forgot to call UNO! Give them 2 penalty cards and warn everyone
@@ -515,13 +515,15 @@ export class GameRoom {
 
     callUno(playerId) {
         const player = this.players.find(p => p.id === playerId);
-        // Allow calling UNO if they have at least 1 card (for chipping out) or 2 cards (going to 1)
-        if (player && player.hand.length >= 1) {
+        // Allow calling UNO only when the player has exactly 1 card.
+        if (player && player.hand.length === 1) {
             this.unoCalledBy.add(playerId);
             this.io.to(this.roomCode).emit('unoCalled', {
                 playerId,
                 playerName: player.name
             });
+            // Refresh state immediately so catch targets and UNO availability are in sync.
+            this.broadcastGameState();
         }
     }
 
@@ -919,7 +921,7 @@ export class GameRoom {
     }
 
     shouldBotCallUno(hand, cardsToPlayCount) {
-        return (hand.length - cardsToPlayCount) <= 1;
+        return hand.length === 1 && cardsToPlayCount >= 1;
     }
 
     calculateScores(winnerId = null) {
@@ -973,7 +975,8 @@ export class GameRoom {
                     cardCount: p.hand.length,
                     isCurrentTurn: p.id === currentPlayer?.id
                 })),
-                canCallUno: player.hand.length === 2,
+                canCallUno: player.hand.length === 1,
+                hasCalledUno: this.unoCalledBy.has(player.id),
                 playersWithOneCard: this.players
                     .filter(p => p.hand.length === 1 && !this.unoCalledBy.has(p.id) && p.id !== player.id)
                     .map(p => ({ id: p.id, name: p.name }))
