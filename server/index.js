@@ -44,13 +44,17 @@ function saveState() {
 
 // Get local network IP
 function getLocalIP() {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                return iface.address;
+    try {
+        const interfaces = os.networkInterfaces();
+        for (const name of Object.keys(interfaces)) {
+            for (const iface of interfaces[name]) {
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    return iface.address;
+                }
             }
         }
+    } catch (err) {
+        console.warn('Could not inspect network interfaces; using localhost.');
     }
     return 'localhost';
 }
@@ -142,9 +146,14 @@ io.on('connection', (socket) => {
 
         if (existingPlayer) {
             // Update the socket reference for the existing player
+            const previousPlayerId = existingPlayer.id;
             existingPlayer.socket = socket;
             existingPlayer.id = socket.id;
             existingPlayer.disconnected = false; // Clear disconnected flag
+            if (room.unoCalledBy.has(previousPlayerId)) {
+                room.unoCalledBy.delete(previousPlayerId);
+                room.unoCalledBy.add(socket.id);
+            }
             socket.join(roomCode.toUpperCase());
 
             saveState(); // Save state (update player connection status/id)

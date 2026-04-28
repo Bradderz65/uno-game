@@ -84,10 +84,15 @@ export class GameRoom {
             this.players.splice(index, 1);
 
             if (this.gameStarted && this.players.length > 1) {
-                // Adjust current player index if needed
+                // Keep the same logical current player after removing someone
+                // who was seated before them.
+                if (index < this.currentPlayerIndex) {
+                    this.currentPlayerIndex -= 1;
+                }
                 if (this.currentPlayerIndex >= this.players.length) {
                     this.currentPlayerIndex = 0;
                 }
+                this.unoCalledBy.delete(playerId);
                 this.broadcastGameState();
             } else if (this.players.length > 0) {
                 // Make first player the new host
@@ -161,6 +166,7 @@ export class GameRoom {
         let firstCard;
         do {
             firstCard = this.drawFromDeck();
+            if (!firstCard) return;
             if (firstCard.type === CARD_TYPES.WILD_DRAW_FOUR) {
                 this.deck.push(firstCard);
                 this.deck = shuffleDeck(this.deck);
@@ -224,12 +230,16 @@ export class GameRoom {
 
     drawFromDeck() {
         if (this.deck.length === 0) {
-            // Reshuffle discard pile into deck
+            if (this.discardPile.length <= 1) {
+                return null;
+            }
+
+            // Reshuffle discard pile into deck, preserving the visible top card.
             const topCard = this.discardPile.pop();
             this.deck = shuffleDeck(this.discardPile);
             this.discardPile = [topCard];
         }
-        return this.deck.pop();
+        return this.deck.pop() || null;
     }
 
     playCard(playerId, cardIndicesOrIndex, chosenColor) {
@@ -244,17 +254,22 @@ export class GameRoom {
 
         // Normalize to array (Client sends insertion order now)
         const cardIndices = Array.isArray(cardIndicesOrIndex) ? [...cardIndicesOrIndex] : [cardIndicesOrIndex];
-        
-        // Indices to remove must be sorted descending to safe splice
-        const indicesToRemove = [...cardIndices].sort((a, b) => b - a);
+        const normalizedCardIndices = cardIndices.map(idx => Number(idx));
+        const uniqueCardIndices = new Set(normalizedCardIndices);
 
         // Validate indices
-        if (cardIndices.some(idx => idx < 0 || idx >= player.hand.length)) {
+        if (
+            uniqueCardIndices.size !== normalizedCardIndices.length ||
+            normalizedCardIndices.some(idx => !Number.isInteger(idx) || idx < 0 || idx >= player.hand.length)
+        ) {
             return;
         }
 
+        // Indices to remove must be sorted descending to safe splice
+        const indicesToRemove = [...normalizedCardIndices].sort((a, b) => b - a);
+
         // Cards in user-selected order
-        const cardsToPlay = cardIndices.map(idx => player.hand[idx]);
+        const cardsToPlay = normalizedCardIndices.map(idx => player.hand[idx]);
         
         // Ensure compatibility within the set itself
         if (!areCardsCompatible(cardsToPlay)) {
@@ -314,6 +329,7 @@ export class GameRoom {
             const penaltyCards = [];
             for (let i = 0; i < 2; i++) {
                 const card = this.drawFromDeck();
+                if (!card) break;
                 player.hand.push(card);
                 penaltyCards.push(card);
             }
@@ -345,7 +361,7 @@ export class GameRoom {
         // Handle color choice (using last card or first wild found)
         const wildCard = cardsToPlay.find(c => c.color === 'wild');
         if (wildCard) {
-            this.currentColor = chosenColor || COLORS[0];
+            this.currentColor = COLORS.includes(chosenColor) ? chosenColor : COLORS[0];
         } else {
             // Use color of the LAST card played
             this.currentColor = cardsToPlay[cardsToPlay.length - 1].color;
@@ -480,6 +496,7 @@ export class GameRoom {
         const drawnCards = [];
         for (let i = 0; i < cardsToDraw; i++) {
             const card = this.drawFromDeck();
+            if (!card) break;
             player.hand.push(card);
             drawnCards.push(card);
         }
@@ -528,22 +545,9 @@ export class GameRoom {
     }
 
     catchUno(catcherId, targetPlayerId) {
-        const target = this.players.find(p => p.id === targetPlayerId);
-        const catcher = this.players.find(p => p.id === catcherId);
-
-        if (target && catcher && target.hand.length === 1 && !this.unoCalledBy.has(targetPlayerId)) {
-            // Target must draw 2 cards as penalty
-            for (let i = 0; i < 2; i++) {
-                target.hand.push(this.drawFromDeck());
-            }
-            
-            this.io.to(this.roomCode).emit('unoCaught', {
-                catcherName: catcher.name,
-                targetName: target.name
-            });
-
-            this.broadcastGameState();
-        }
+        // UNO is enforced when a player tries to play their final card.
+        // A player sitting on one card is not catchable under this ruleset.
+        return false;
     }
 
     nextTurn() {
@@ -592,9 +596,6 @@ export class GameRoom {
 
         const bot = this.players[playerIndex];
         if (!bot.isBot || this.isDealing || this.winner) return;
-
-        // Bot tries to catch opponents who forgot UNO before playing
-        this.botTryCatchUno(botId);
 
         const topCard = this.discardPile[this.discardPile.length - 1];
         let playableGroups = this.getBotPlayableGroups(bot.hand, topCard, this.currentColor, this.drawStack);
@@ -839,21 +840,7 @@ export class GameRoom {
     }
 
     botTryCatchUno(botId) {
-        // Bot looks for players with 1 card who forgot to call UNO
-        // Bots have a high chance (85%) to catch to make them competitive
-        const victims = this.players.filter(p => 
-            p.id !== botId && 
-            p.hand.length === 1 && 
-            !this.unoCalledBy.has(p.id)
-        );
-
-        for (const victim of victims) {
-            // 85% chance to catch (bots are good but not perfect)
-            if (Math.random() < 0.85) {
-                console.log(`[Room ${this.roomCode}] Bot caught ${victim.name} forgetting UNO!`);
-                this.catchUno(botId, victim.id);
-            }
-        }
+        return false;
     }
 
     getBotWildColor(hand, wildIndex) {
@@ -977,9 +964,7 @@ export class GameRoom {
                 })),
                 canCallUno: player.hand.length === 1,
                 hasCalledUno: this.unoCalledBy.has(player.id),
-                playersWithOneCard: this.players
-                    .filter(p => p.hand.length === 1 && !this.unoCalledBy.has(p.id) && p.id !== player.id)
-                    .map(p => ({ id: p.id, name: p.name }))
+                playersWithOneCard: []
             };
 
             player.socket.emit('gameState', state);

@@ -239,6 +239,7 @@ function tryReconnect() {
         socket.emit('rejoinRoom', { roomCode: savedRoom, playerName: savedName, oldPlayerId: savedId }, (response) => {
             if (response.success) {
                 myPlayerId = response.playerId;
+                game.setPlayerId(myPlayerId);
                 currentRoomCode = response.roomCode;
                 playerName = savedName;
                 isHost = response.isHost;
@@ -276,6 +277,7 @@ createBtn.addEventListener('click', () => {
     socket.emit('createRoom', name, (response) => {
         if (response.success) {
             myPlayerId = response.playerId;
+            game.setPlayerId(myPlayerId);
             currentRoomCode = response.roomCode;
             playerName = name;
             isHost = true;
@@ -339,6 +341,7 @@ function joinRoomByCode(code) {
     socket.emit('joinRoom', { roomCode: code, playerName: name }, (response) => {
         if (response.success) {
             myPlayerId = response.playerId;
+            game.setPlayerId(myPlayerId);
             currentRoomCode = response.roomCode;
             playerName = name;
             isHost = false;
@@ -368,6 +371,7 @@ joinBtn.addEventListener('click', () => {
     socket.emit('joinRoom', { roomCode: code, playerName: name }, (response) => {
         if (response.success) {
             myPlayerId = response.playerId;
+            game.setPlayerId(myPlayerId);
             currentRoomCode = response.roomCode;
             playerName = name;
             isHost = false;
@@ -475,7 +479,7 @@ colorButtons.forEach(btn => {
             colorModal.classList.add('hidden');
         } else if (pendingMultiPlay) {
             sounds.colorSelect();
-            const indices = Array.from(selectedCardIndices).sort((a, b) => a - b);
+            const indices = Array.from(selectedCardIndices);
             const hand = game.state.hand;
             const selectedCards = indices.map(i => hand[i]);
             pendingPlayAnimation = {
@@ -511,7 +515,7 @@ playAgainBtn.addEventListener('click', () => {
 // Sound toggle
 soundToggle?.addEventListener('click', () => {
     const enabled = sounds.toggle();
-    soundToggle.textContent = enabled ? '🔊' : '🔇';
+    soundToggle.textContent = enabled ? 'Sound' : 'Muted';
     soundToggle.title = enabled ? 'Sound On' : 'Sound Off';
 });
 
@@ -550,7 +554,7 @@ socket.on('gameState', (state) => {
 
     // Check if it just became our turn
     const wasMyTurn = game.isMyTurn;
-    game.updateState(state);
+    game.updateState(state, myPlayerId);
     updateGameUI(state);
 
     // Play "your turn" sound if turn just changed to us
@@ -613,7 +617,7 @@ socket.on('unoForgotten', (data) => {
     if (data.playerId === myPlayerId) {
         showToast(`You forgot to call UNO! +2 penalty cards`, 'error');
     } else {
-        showToast(`🚨 ${data.playerName} forgot to call UNO! +2 penalty cards`, 'info');
+        showToast(`${data.playerName} forgot to call UNO! +2 penalty cards`, 'info');
     }
     sounds.caught();
 });
@@ -849,12 +853,8 @@ function isWildCard(card) {
 function applyChosenColorIndicator(cardEl, chosenColor) {
     cardEl.classList.add('has-chosen-color');
     cardEl.style.setProperty('--chosen-color', `var(--uno-${chosenColor})`);
-
-    const indicator = document.createElement('div');
-    indicator.className = `color-indicator ${chosenColor}`;
-    indicator.style.background = `var(--uno-${chosenColor})`;
-    indicator.textContent = chosenColor.toUpperCase();
-    cardEl.appendChild(indicator);
+    cardEl.title = `Chosen color: ${chosenColor}`;
+    cardEl.setAttribute('aria-label', `Chosen color: ${chosenColor}`);
 }
 
 function updateOpponents(players, currentPlayerId) {
@@ -1219,7 +1219,7 @@ function showCatchPanel(players) {
 }
 
 function showGameOver(data) {
-    winnerText.textContent = `🎉 ${data.winner.name} Wins! 🎉`;
+    winnerText.textContent = `${data.winner.name} Wins`;
 
     scoresList.innerHTML = '';
     // Scores are already sorted by server (1st place first)

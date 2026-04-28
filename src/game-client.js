@@ -9,9 +9,17 @@ export class GameClient {
         this.isMyTurn = false;
     }
 
-    updateState(state) {
+    setPlayerId(playerId) {
+        this.myPlayerId = playerId;
+        this.isMyTurn = this.state?.currentPlayerId === this.myPlayerId;
+    }
+
+    updateState(state, playerId = this.myPlayerId) {
         this.state = state;
-        this.isMyTurn = state.currentPlayerId === this.socket.id;
+        if (playerId) {
+            this.myPlayerId = playerId;
+        }
+        this.isMyTurn = state.currentPlayerId === this.myPlayerId;
     }
 
     get hand() {
@@ -85,11 +93,11 @@ export class GameClient {
     }
 
     shouldCallUno() {
-        return this.hand.length === 2 && this.isMyTurn;
+        return this.hand.length === 1 && this.isMyTurn && !this.state?.hasCalledUno;
     }
 
     getOpponents() {
-        return this.players.filter(p => p.id !== this.socket.id);
+        return this.players.filter(p => p.id !== this.myPlayerId);
     }
 
     getCurrentPlayer() {

@@ -36,7 +36,7 @@
             <div id="rooms-browser" class="rooms-browser">
               <div class="rooms-header">
                 <h3>Available Games</h3>
-                <button id="refresh-rooms-btn" class="btn-icon-only" title="Refresh">🔄</button>
+                <button id="refresh-rooms-btn" class="btn-icon-only" title="Refresh" aria-label="Refresh">↻</button>
               </div>
               <div id="rooms-list" class="rooms-list">
                 <div class="no-rooms">Searching for games...</div>
@@ -95,8 +95,8 @@
           <div class="direction-indicator" id="direction-indicator">↻</div>
         </div>
         <div class="header-right">
-          <button id="leave-game-btn" class="btn-icon-only" title="Leave Game">🚪</button>
-          <button id="sound-toggle" class="btn-icon-only" title="Toggle Sound">🔊</button>
+          <button id="leave-game-btn" class="btn-icon-only" title="Leave Game" aria-label="Leave Game">Exit</button>
+          <button id="sound-toggle" class="btn-icon-only" title="Toggle Sound" aria-label="Toggle Sound">Sound</button>
           <div class="room-badge" id="game-room-code">----</div>
         </div>
       </div>
@@ -135,11 +135,11 @@
 
           <div class="action-buttons">
             <button class="btn btn-action" id="draw-btn">
-              <span class="btn-icon">📥</span>
+              <span class="btn-icon">↓</span>
               Draw
             </button>
             <button class="btn btn-secondary hidden" id="pass-btn">
-              <span class="btn-icon">⏭️</span>
+              <span class="btn-icon">→</span>
               Pass
             </button>
             <button class="btn btn-primary disabled" id="play-btn" disabled>
