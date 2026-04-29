@@ -4,11 +4,14 @@ export const CARD_TYPES = {
     REVERSE: 'reverse',
     DRAW_TWO: 'draw_two',
     WILD: 'wild',
-    WILD_DRAW_FOUR: 'wild_draw_four'
+    WILD_DRAW_FOUR: 'wild_draw_four',
+    CUSTOM_DRAW: 'custom_draw'
 };
 
 export function isPlusCard(card) {
-    return card?.type === CARD_TYPES.DRAW_TWO || card?.type === CARD_TYPES.WILD_DRAW_FOUR;
+    return card?.type === CARD_TYPES.DRAW_TWO ||
+        card?.type === CARD_TYPES.WILD_DRAW_FOUR ||
+        card?.type === CARD_TYPES.CUSTOM_DRAW;
 }
 
 export function areCardsCompatible(cards) {
@@ -32,7 +35,9 @@ export function canPlayCard(card, topCard, currentColor, drawStack = 0) {
         return isPlusCard(topCard) && isPlusCard(card);
     }
 
-    if (card.type === CARD_TYPES.WILD || card.type === CARD_TYPES.WILD_DRAW_FOUR) {
+    if (card.type === CARD_TYPES.WILD ||
+        card.type === CARD_TYPES.WILD_DRAW_FOUR ||
+        card.type === CARD_TYPES.CUSTOM_DRAW) {
         return true;
     }
 

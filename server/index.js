@@ -199,10 +199,10 @@ io.on('connection', (socket) => {
     });
 
     // Start game
-    socket.on('startGame', (roomCode, startingCardCount) => {
+    socket.on('startGame', (roomCode, startingCardCount, customCardConfig) => {
         const room = rooms.get(roomCode);
         if (room && room.isHost(socket.id)) {
-            room.startGame(startingCardCount);
+            room.startGame(startingCardCount, customCardConfig);
             saveState(); // Save state
         }
     });

@@ -67,6 +67,18 @@
           <div id="game-settings" class="game-settings hidden">
              <label for="starting-cards">Starting Cards:</label>
              <input type="number" id="starting-cards" value="7" min="1" max="20">
+
+             <label class="custom-card-toggle" for="custom-card-enabled">
+               <input type="checkbox" id="custom-card-enabled">
+               Custom Card
+             </label>
+
+             <div class="custom-card-settings" id="custom-card-settings">
+               <label for="custom-card-draw">Draw Amount:</label>
+               <input type="number" id="custom-card-draw" value="8" min="1" max="20">
+               <label for="custom-card-count">Cards in Deck:</label>
+               <input type="number" id="custom-card-count" value="2" min="1" max="8">
+             </div>
           </div>
 
           <button id="add-bot-btn" class="btn btn-secondary btn-full hidden">
@@ -133,14 +145,12 @@
             <!-- Player's cards will be inserted here -->
           </div>
 
+          <div class="turn-action-status" id="turn-action-status" aria-live="polite">Waiting for turn</div>
+
           <div class="action-buttons">
-            <button class="btn btn-action" id="draw-btn">
-              <span class="btn-icon">↓</span>
-              Draw
-            </button>
-            <button class="btn btn-secondary hidden" id="pass-btn">
-              <span class="btn-icon">→</span>
-              Pass
+            <button class="btn btn-action" id="draw-btn" data-action="draw">
+              <span class="btn-icon" id="turn-action-icon">↓</span>
+              <span id="turn-action-label">Draw</span>
             </button>
             <button class="btn btn-primary disabled" id="play-btn" disabled>
               Play (<span id="selected-count">0</span>)

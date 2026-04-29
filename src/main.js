@@ -68,6 +68,10 @@ const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
 const leaveGameBtn = document.getElementById('leave-game-btn');
 const gameSettings = document.getElementById('game-settings');
 const startingCardsInput = document.getElementById('starting-cards');
+const customCardEnabledInput = document.getElementById('custom-card-enabled');
+const customCardSettings = document.getElementById('custom-card-settings');
+const customCardDrawInput = document.getElementById('custom-card-draw');
+const customCardCountInput = document.getElementById('custom-card-count');
 
 // DOM Elements - Game
 const gameScreen = document.getElementById('game-screen');
@@ -81,6 +85,9 @@ const drawStackIndicator = document.getElementById('draw-stack');
 const drawStackCount = document.getElementById('draw-stack-count');
 const playerHand = document.getElementById('player-hand');
 const drawBtn = document.getElementById('draw-btn');
+const turnActionIcon = document.getElementById('turn-action-icon');
+const turnActionLabel = document.getElementById('turn-action-label');
+const turnActionStatus = document.getElementById('turn-action-status');
 const unoBtn = document.getElementById('uno-btn');
 const drawPile = document.getElementById('draw-pile');
 const catchPanel = document.getElementById('catch-panel');
@@ -117,7 +124,6 @@ let pendingPlayAnimation = null;
 
 // UI Elements for Multi Select
 const playBtn = document.getElementById('play-btn');
-const passBtn = document.getElementById('pass-btn');
 const selectedCountSpan = document.getElementById('selected-count');
 
 // Session storage keys
@@ -371,8 +377,12 @@ joinBtn.addEventListener('click', () => {
 
 startBtn.addEventListener('click', () => {
     if (isHost && currentRoomCode) {
-        socket.emit('startGame', currentRoomCode, startingCardsInput.value);
+        socket.emit('startGame', currentRoomCode, startingCardsInput.value, getCustomCardConfig());
     }
+});
+
+customCardEnabledInput?.addEventListener('change', () => {
+    customCardSettings?.classList.toggle('enabled', customCardEnabledInput.checked);
 });
 
 addBotBtn?.addEventListener('click', () => {
@@ -424,19 +434,17 @@ leaveGameBtn?.addEventListener('click', leaveRoom);
 // ========================================
 
 drawBtn.addEventListener('click', () => {
-    if (currentRoomCode && game.isMyTurn) {
+    if (!currentRoomCode || !game.isMyTurn || drawBtn.disabled) return;
+
+    if (drawBtn.dataset.action === 'pass') {
+        socket.emit('passTurn', currentRoomCode);
+    } else {
         socket.emit('drawCard', currentRoomCode);
     }
 });
 
-passBtn.addEventListener('click', () => {
-    if (currentRoomCode && game.isMyTurn) {
-        socket.emit('passTurn', currentRoomCode);
-    }
-});
-
 drawPile.addEventListener('click', () => {
-    if (currentRoomCode && game.isMyTurn) {
+    if (currentRoomCode && game.isMyTurn && !drawBtn.disabled && drawBtn.dataset.action === 'draw') {
         socket.emit('drawCard', currentRoomCode);
     }
 });
@@ -573,7 +581,7 @@ socket.on('cardPlayed', (data) => {
         sounds.skip();
     } else if (data.card.type === 'reverse') {
         sounds.reverse();
-    } else if (data.card.type === 'draw_two' || data.card.type === 'wild_draw_four') {
+    } else if (data.card.type === 'draw_two' || data.card.type === 'wild_draw_four' || data.card.type === 'custom_draw') {
         sounds.drawPenalty();
     } else if (data.card.type === 'wild') {
         sounds.wildCard();
@@ -776,6 +784,8 @@ function updateLobbyUI(state) {
 }
 
 function updateGameUI(state) {
+    gameScreen.classList.toggle('draw-stack-active', state.drawStack > 0);
+
     // Current player indicator
     currentPlayerName.textContent = state.currentPlayerName || '---';
 
@@ -822,31 +832,63 @@ function updateGameUI(state) {
         // 2. Player has already drawn this turn
         const hasPlayableCard = state.hand.some(card => isLegalPlayableCard(card, state.hand.length, state.topCard, state.currentColor, state.drawStack));
 
-        if (state.hasDrawnThisTurn) {
-            drawBtn.disabled = true;
-            drawBtn.title = "You have already drawn.";
-        } else if (hasPlayableCard && state.drawStack === 0) {
-            drawBtn.disabled = true;
-            drawBtn.title = "You have playable cards!";
-        } else {
-            drawBtn.disabled = false;
-            drawBtn.title = "";
-        }
-
-        // Show pass button on my turn ONLY if I have drawn a card AND have no playable cards
         if (state.hasDrawnThisTurn && !hasPlayableCard) {
-            passBtn.classList.remove('hidden');
+            setTurnActionState({
+                action: 'pass',
+                disabled: false,
+                label: 'Pass',
+                title: 'End your turn.',
+                status: 'No playable cards. Pass to end your turn.'
+            });
+        } else if (state.hasDrawnThisTurn) {
+            setTurnActionState({
+                action: 'draw',
+                disabled: true,
+                label: 'Draw',
+                title: 'Play the card you drew or another playable card.',
+                status: 'Play a card to continue.'
+            });
+        } else if (hasPlayableCard && state.drawStack === 0) {
+            setTurnActionState({
+                action: 'draw',
+                disabled: true,
+                label: 'Draw',
+                title: 'You have playable cards.',
+                status: 'Choose a playable card.'
+            });
         } else {
-            passBtn.classList.add('hidden');
+            const hasStack = state.drawStack > 0;
+            setTurnActionState({
+                action: 'draw',
+                disabled: false,
+                label: hasStack ? `Draw ${state.drawStack}` : 'Draw',
+                title: hasStack ? `Draw ${state.drawStack} cards.` : 'Draw a card.',
+                status: hasStack ? `Stack is +${state.drawStack}. Play a plus card or draw.` : 'No playable cards. Draw one card.'
+            });
         }
     } else {
         document.body.classList.remove('my-turn');
-        drawBtn.disabled = true;
-        drawBtn.title = "";
-        passBtn.classList.add('hidden');
+        setTurnActionState({
+            action: 'draw',
+            disabled: true,
+            label: 'Draw',
+            title: '',
+            status: `Waiting for ${state.currentPlayerName || 'turn'}`
+        });
     }
 
     updateMultiPlayUI();
+}
+
+function setTurnActionState({ action, disabled, label, title, status }) {
+    const isPass = action === 'pass';
+    drawBtn.dataset.action = action;
+    drawBtn.disabled = disabled;
+    drawBtn.title = title;
+    drawBtn.classList.toggle('is-pass-action', isPass);
+    turnActionIcon.textContent = isPass ? '→' : '↓';
+    turnActionLabel.textContent = label;
+    turnActionStatus.textContent = status;
 }
 
 function updateDiscardPile(topCard, currentColor) {
@@ -864,7 +906,10 @@ function updateDiscardPile(topCard, currentColor) {
 }
 
 function isWildCard(card) {
-    return card?.color === 'wild' || card?.type === 'wild' || card?.type === 'wild_draw_four';
+    return card?.color === 'wild' ||
+        card?.type === 'wild' ||
+        card?.type === 'wild_draw_four' ||
+        card?.type === 'custom_draw';
 }
 
 function applyChosenColorIndicator(cardEl, chosenColor) {
@@ -872,6 +917,12 @@ function applyChosenColorIndicator(cardEl, chosenColor) {
     cardEl.style.setProperty('--chosen-color', `var(--uno-${chosenColor})`);
     cardEl.title = `Chosen color: ${chosenColor}`;
     cardEl.setAttribute('aria-label', `Chosen color: ${chosenColor}`);
+
+    if (!cardEl.querySelector('.chosen-color-chip')) {
+        const chip = document.createElement('span');
+        chip.className = 'chosen-color-chip';
+        cardEl.appendChild(chip);
+    }
 }
 
 function updateOpponents(players, currentPlayerId) {
@@ -1133,7 +1184,9 @@ function updateHandVisuals() {
 
 function createCardElement(card, canPlay = false) {
     const cardEl = document.createElement('div');
-    cardEl.className = `card ${card.color}`;
+    const typeClass = card.type.replaceAll('_', '-');
+    const isPlusCard = card.type === 'draw_two' || card.type === 'wild_draw_four' || card.type === 'custom_draw';
+    cardEl.className = `card ${card.color} ${typeClass}${isPlusCard ? ' plus-card' : ''}`;
 
     const value = getCardDisplayValue(card);
 
@@ -1165,8 +1218,17 @@ function getCardDisplayValue(card) {
         case 'draw_two': return '+2';
         case 'wild': return 'W';
         case 'wild_draw_four': return '+4';
+        case 'custom_draw': return `+${card.drawAmount || parseInt(String(card.value).replace('+', ''), 10) || 8}`;
         default: return '?';
     }
+}
+
+function getCustomCardConfig() {
+    return {
+        enabled: Boolean(customCardEnabledInput?.checked),
+        drawAmount: customCardDrawInput?.value || 8,
+        count: customCardCountInput?.value || 2
+    };
 }
 
 function showCatchPanel(players) {

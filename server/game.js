@@ -8,15 +8,40 @@ export const CARD_TYPES = {
     REVERSE: 'reverse',
     DRAW_TWO: 'draw_two',
     WILD: 'wild',
-    WILD_DRAW_FOUR: 'wild_draw_four'
+    WILD_DRAW_FOUR: 'wild_draw_four',
+    CUSTOM_DRAW: 'custom_draw'
 };
 
 export function isPlusCard(card) {
-    return card?.type === CARD_TYPES.DRAW_TWO || card?.type === CARD_TYPES.WILD_DRAW_FOUR;
+    return card?.type === CARD_TYPES.DRAW_TWO ||
+        card?.type === CARD_TYPES.WILD_DRAW_FOUR ||
+        card?.type === CARD_TYPES.CUSTOM_DRAW;
+}
+
+export function getDrawAmount(card) {
+    if (card?.type === CARD_TYPES.DRAW_TWO) return 2;
+    if (card?.type === CARD_TYPES.WILD_DRAW_FOUR) return 4;
+    if (card?.type === CARD_TYPES.CUSTOM_DRAW) return normalizeCustomDrawAmount(card.drawAmount);
+    return 0;
+}
+
+export function normalizeCustomDrawAmount(value) {
+    const amount = Number.parseInt(value, 10);
+    if (!Number.isFinite(amount)) return 8;
+    return Math.min(20, Math.max(1, amount));
+}
+
+export function normalizeCustomCardConfig(config = {}) {
+    return {
+        enabled: Boolean(config.enabled),
+        drawAmount: normalizeCustomDrawAmount(config.drawAmount),
+        count: Math.min(8, Math.max(1, Number.parseInt(config.count, 10) || 2))
+    };
 }
 
 // Create a standard UNO deck
-export function createDeck() {
+export function createDeck(customCardConfig = {}) {
+    const customConfig = normalizeCustomCardConfig(customCardConfig);
     const deck = [];
     let id = 0;
 
@@ -46,6 +71,19 @@ export function createDeck() {
         deck.push({ id: id++, color: WILD_COLOR, type: CARD_TYPES.WILD_DRAW_FOUR, value: '+4' });
     }
 
+    if (customConfig.enabled) {
+        for (let i = 0; i < customConfig.count; i++) {
+            deck.push({
+                id: id++,
+                color: WILD_COLOR,
+                type: CARD_TYPES.CUSTOM_DRAW,
+                value: `+${customConfig.drawAmount}`,
+                drawAmount: customConfig.drawAmount,
+                custom: true
+            });
+        }
+    }
+
     return deck;
 }
 
@@ -64,7 +102,9 @@ export function canPlayCard(card, topCard, currentColor) {
     if (!card || !topCard) return false;
 
     // Wild cards can always be played
-    if (card.type === CARD_TYPES.WILD || card.type === CARD_TYPES.WILD_DRAW_FOUR) {
+    if (card.type === CARD_TYPES.WILD ||
+        card.type === CARD_TYPES.WILD_DRAW_FOUR ||
+        card.type === CARD_TYPES.CUSTOM_DRAW) {
         return true;
     }
 
@@ -126,6 +166,8 @@ export function getCardDisplay(card) {
             return 'W';
         case CARD_TYPES.WILD_DRAW_FOUR:
             return '+4';
+        case CARD_TYPES.CUSTOM_DRAW:
+            return `+${getDrawAmount(card)}`;
         default:
             return '?';
     }
@@ -143,6 +185,7 @@ export function calculateHandPoints(hand) {
                 return total + 20;
             case CARD_TYPES.WILD:
             case CARD_TYPES.WILD_DRAW_FOUR:
+            case CARD_TYPES.CUSTOM_DRAW:
                 return total + 50;
             default:
                 return total;

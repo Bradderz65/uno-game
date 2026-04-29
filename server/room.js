@@ -1,4 +1,4 @@
-import { createDeck, shuffleDeck, canPlayCard, areCardsCompatible, isPlusCard, CARD_TYPES, COLORS } from './game.js';
+import { createDeck, shuffleDeck, canPlayCard, areCardsCompatible, isPlusCard, getDrawAmount, normalizeCustomCardConfig, CARD_TYPES, COLORS } from './game.js';
 
 export class GameRoom {
     constructor(roomCode, io) {
@@ -19,6 +19,9 @@ export class GameRoom {
         this.hasDrawnThisTurn = false;
         this.pendingBotTurn = null;
         this.rematchVotes = null;
+        this.customCardConfig = normalizeCustomCardConfig();
+        this.startingCardCount = 7;
+        this.actionLockedUntil = 0;
     }
 
     addPlayer(socket, name) {
@@ -142,13 +145,15 @@ export class GameRoom {
         this.io.to(this.roomCode).emit('lobbyState', state);
     }
 
-    startGame(startingCardCount = 7) {
+    startGame(startingCardCount = 7, customCardConfig = this.customCardConfig) {
         if (this.players.length < 2) {
             return;
         }
 
+        this.startingCardCount = this.normalizeStartingCardCount(startingCardCount);
+        this.customCardConfig = normalizeCustomCardConfig(customCardConfig);
         this.gameStarted = true;
-        this.deck = shuffleDeck(createDeck());
+        this.deck = shuffleDeck(createDeck(this.customCardConfig));
         this.discardPile = [];
         this.direction = 1;
         this.currentPlayerIndex = 0;
@@ -169,11 +174,11 @@ export class GameRoom {
         do {
             firstCard = this.drawFromDeck();
             if (!firstCard) return;
-            if (firstCard.type === CARD_TYPES.WILD_DRAW_FOUR) {
+            if (firstCard.type === CARD_TYPES.WILD_DRAW_FOUR || firstCard.type === CARD_TYPES.CUSTOM_DRAW) {
                 this.deck.push(firstCard);
                 this.deck = shuffleDeck(this.deck);
             }
-        } while (firstCard.type === CARD_TYPES.WILD_DRAW_FOUR);
+        } while (firstCard.type === CARD_TYPES.WILD_DRAW_FOUR || firstCard.type === CARD_TYPES.CUSTOM_DRAW);
 
         this.discardPile.push(firstCard);
         this.currentColor = firstCard.color === 'wild' ? COLORS[Math.floor(Math.random() * 4)] : firstCard.color;
@@ -185,7 +190,13 @@ export class GameRoom {
         this.io.to(this.roomCode).emit('gameStarted');
         
         // Deal cards with animation effect
-        this.dealInitialCards(parseInt(startingCardCount) || 7);
+        this.dealInitialCards(this.startingCardCount);
+    }
+
+    normalizeStartingCardCount(value) {
+        const count = Number.parseInt(value, 10);
+        if (!Number.isFinite(count)) return 7;
+        return Math.min(20, Math.max(1, count));
     }
 
     async dealInitialCards(count) {
@@ -244,8 +255,18 @@ export class GameRoom {
         return this.deck.pop() || null;
     }
 
+    isActionLocked() {
+        return this.isDealing || Date.now() < this.actionLockedUntil;
+    }
+
+    lockActionsForDraw(cardCount) {
+        if (cardCount <= 0) return;
+        const duration = Math.min(1800, 450 + cardCount * 170);
+        this.actionLockedUntil = Math.max(this.actionLockedUntil, Date.now() + duration);
+    }
+
     playCard(playerId, cardIndicesOrIndex, chosenColor) {
-        if (this.isDealing) return;
+        if (this.isActionLocked()) return;
 
         const playerIndex = this.players.findIndex(p => p.id === playerId);
         if (playerIndex === -1 || playerIndex !== this.currentPlayerIndex) {
@@ -306,7 +327,8 @@ export class GameRoom {
             c.type === CARD_TYPES.REVERSE || 
             c.type === CARD_TYPES.DRAW_TWO || 
             c.type === CARD_TYPES.WILD || 
-            c.type === CARD_TYPES.WILD_DRAW_FOUR
+            c.type === CARD_TYPES.WILD_DRAW_FOUR ||
+            c.type === CARD_TYPES.CUSTOM_DRAW
         );
         
         if (cardsRemainingAfterPlay === 0 && hasSpecialCard) {
@@ -337,6 +359,7 @@ export class GameRoom {
             
             // Notify the player of their penalty cards
             player.socket.emit('cardsDrawn', penaltyCards);
+            this.lockActionsForDraw(penaltyCards.length);
             
             // Broadcast the cheater warning to everyone
             this.io.to(this.roomCode).emit('unoForgotten', {
@@ -392,8 +415,7 @@ export class GameRoom {
 
         for (const card of cardsToPlay) {
             if (card.type === CARD_TYPES.SKIP) skipSteps++;
-            if (card.type === CARD_TYPES.DRAW_TWO) totalDraw += 2;
-            if (card.type === CARD_TYPES.WILD_DRAW_FOUR) totalDraw += 4;
+            totalDraw += getDrawAmount(card);
             if (card.type === CARD_TYPES.REVERSE) {
                 if (this.players.length === 2) skipSteps++;
                 else reverseFlipped = !reverseFlipped;
@@ -434,7 +456,7 @@ export class GameRoom {
     }
 
     drawCard(playerId) {
-        if (this.isDealing) return;
+        if (this.isActionLocked()) return;
 
         const playerIndex = this.players.findIndex(p => p.id === playerId);
         if (playerIndex === -1 || playerIndex !== this.currentPlayerIndex) {
@@ -473,6 +495,7 @@ export class GameRoom {
 
         // Notify the player of their drawn cards
         player.socket.emit('cardsDrawn', drawnCards);
+        this.lockActionsForDraw(drawnCards.length);
 
         // Clear UNO status since they drew cards
         this.unoCalledBy.delete(playerId);
@@ -483,7 +506,7 @@ export class GameRoom {
     }
 
     passTurn(playerId) {
-        if (this.isDealing) return;
+        if (this.isActionLocked()) return;
 
         const playerIndex = this.players.findIndex(p => p.id === playerId);
         if (playerIndex === -1 || playerIndex !== this.currentPlayerIndex) {
@@ -578,7 +601,7 @@ export class GameRoom {
         this.io.to(this.roomCode).emit('rematchState', state);
 
         if (state.acceptedCount === state.totalCount) {
-            this.startGame();
+            this.startGame(this.startingCardCount, this.customCardConfig);
             return { success: true, started: true, state };
         }
 
@@ -626,7 +649,7 @@ export class GameRoom {
             return;
         }
         const currentPlayer = this.players[this.currentPlayerIndex];
-        if (!currentPlayer || !currentPlayer.isBot || this.isDealing || this.winner) {
+        if (!currentPlayer || !currentPlayer.isBot || this.isActionLocked() || this.winner) {
             this.clearPendingBotTurn();
             return;
         }
@@ -653,7 +676,7 @@ export class GameRoom {
         }
 
         const bot = this.players[playerIndex];
-        if (!bot.isBot || this.isDealing || this.winner) return;
+        if (!bot.isBot || this.isActionLocked() || this.winner) return;
 
         const topCard = this.discardPile[this.discardPile.length - 1];
         let playableGroups = this.getBotPlayableGroups(bot.hand, topCard, this.currentColor, this.drawStack);
@@ -815,6 +838,7 @@ export class GameRoom {
             if (nextPlayerIsDangerous) {
                 if (card.type === CARD_TYPES.DRAW_TWO) score += 200;
                 if (card.type === CARD_TYPES.WILD_DRAW_FOUR) score += 250;
+                if (card.type === CARD_TYPES.CUSTOM_DRAW) score += 260 + getDrawAmount(card);
                 if (card.type === CARD_TYPES.SKIP) score += 150;
                 if (card.type === CARD_TYPES.REVERSE) score += 100;
             }
@@ -845,6 +869,8 @@ export class GameRoom {
                     score += 8; // Flexibility
                 } else if (card.type === CARD_TYPES.WILD_DRAW_FOUR) {
                     score += 25; // Best offensive card
+                } else if (card.type === CARD_TYPES.CUSTOM_DRAW) {
+                    score += 25 + getDrawAmount(card);
                 }
             } else {
                 // Early/mid game: conserve action cards, play numbers
@@ -858,6 +884,8 @@ export class GameRoom {
                     score -= 10; // Save wild cards for emergencies
                 } else if (card.type === CARD_TYPES.WILD_DRAW_FOUR) {
                     score -= 15; // Save +4 for desperate situations or endgame
+                } else if (card.type === CARD_TYPES.CUSTOM_DRAW) {
+                    score -= Math.max(8, getDrawAmount(card));
                 }
             }
 
@@ -978,7 +1006,7 @@ export class GameRoom {
             // Points for tie-breaking (lower is better, except winner has 0)
             points: p.hand.reduce((sum, card) => {
                 if (card.type === CARD_TYPES.NUMBER) return sum + card.value;
-                if (card.type === CARD_TYPES.WILD || card.type === CARD_TYPES.WILD_DRAW_FOUR) return sum + 50;
+                if (card.type === CARD_TYPES.WILD || card.type === CARD_TYPES.WILD_DRAW_FOUR || card.type === CARD_TYPES.CUSTOM_DRAW) return sum + 50;
                 return sum + 20;
             }, 0)
         }));
@@ -1042,6 +1070,9 @@ export class GameRoom {
             unoCalledBy: Array.from(this.unoCalledBy),
             winner: this.winner ? { id: this.winner.id, name: this.winner.name } : null,
             hasDrawnThisTurn: this.hasDrawnThisTurn,
+            customCardConfig: this.customCardConfig,
+            startingCardCount: this.startingCardCount,
+            actionLockedUntil: this.actionLockedUntil,
             rematchVotes: this.rematchVotes ? Array.from(this.rematchVotes.entries()) : null,
             bannedPlayerIds: Array.from(this.bannedPlayerIds),
             bannedPlayerNames: Array.from(this.bannedPlayerNames),
@@ -1068,6 +1099,9 @@ export class GameRoom {
         room.unoCalledBy = new Set(state.unoCalledBy);
         room.winner = state.winner;
         room.hasDrawnThisTurn = state.hasDrawnThisTurn || false;
+        room.customCardConfig = normalizeCustomCardConfig(state.customCardConfig);
+        room.startingCardCount = room.normalizeStartingCardCount(state.startingCardCount);
+        room.actionLockedUntil = 0;
         room.rematchVotes = state.rematchVotes ? new Map(state.rematchVotes) : null;
         room.bannedPlayerIds = new Set(state.bannedPlayerIds || []);
         room.bannedPlayerNames = new Set(state.bannedPlayerNames || []);
