@@ -382,13 +382,13 @@ export class GameRoom {
             this.discardPile.push(card);
         }
 
-        // Handle color choice (using last card or first wild found)
-        const wildCard = cardsToPlay.find(c => c.color === 'wild');
-        if (wildCard) {
+        // The visible top card is the last selected card, so it owns the active color.
+        // A chosen wild color only matters when the last card is actually wild.
+        const topPlayedCard = cardsToPlay[cardsToPlay.length - 1];
+        if (topPlayedCard.color === 'wild') {
             this.currentColor = COLORS.includes(chosenColor) ? chosenColor : COLORS[0];
         } else {
-            // Use color of the LAST card played
-            this.currentColor = cardsToPlay[cardsToPlay.length - 1].color;
+            this.currentColor = topPlayedCard.color;
         }
 
         // Clear UNO call only if they no longer have exactly 1 card

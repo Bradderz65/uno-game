@@ -45,6 +45,27 @@ try {
     throw err;
 }
 
+window.unoConnectionDebug = [];
+
+function trackConnectionDebug(event, details = {}) {
+    const entry = {
+        event,
+        at: new Date().toISOString(),
+        socketId: socket?.id || null,
+        transport: socket?.io?.engine?.transport?.name || null,
+        roomCode: currentRoomCode,
+        playerName,
+        ...details
+    };
+
+    window.unoConnectionDebug.push(entry);
+    if (window.unoConnectionDebug.length > 80) {
+        window.unoConnectionDebug.shift();
+    }
+
+    console.info('[UNO connection]', entry);
+}
+
 // Initialize game client
 const game = new GameClient();
 
@@ -157,9 +178,9 @@ playBtn.addEventListener('click', () => {
         return;
     }
 
-    // Check if Wild
-    const hasWild = selectedCards.some(c => c.color === 'wild');
-    if (hasWild) {
+    // Only the final selected card becomes the visible top card, so only it needs a color choice.
+    const topSelectedCard = selectedCards[selectedCards.length - 1];
+    if (topSelectedCard?.color === 'wild') {
         pendingMultiPlay = true;
         colorModal.classList.remove('hidden');
         return;
@@ -329,8 +350,35 @@ function refreshRoomsList() {
 // Auto-refresh rooms
 setInterval(refreshRoomsList, 3000);
 socket.on('connect', () => {
+    trackConnectionDebug('connect');
     refreshRoomsList();
     tryReconnect(); // Keep existing reconnect logic
+});
+
+socket.io.on('reconnect_attempt', (attempt) => {
+    trackConnectionDebug('reconnect_attempt', { attempt });
+});
+
+socket.io.on('reconnect', (attempt) => {
+    trackConnectionDebug('reconnect', { attempt });
+    showToast('Reconnected to server', 'success');
+});
+
+socket.io.on('reconnect_error', (error) => {
+    trackConnectionDebug('reconnect_error', {
+        message: error?.message || String(error)
+    });
+});
+
+socket.io.on('reconnect_failed', () => {
+    trackConnectionDebug('reconnect_failed');
+    showToast('Could not reconnect to server', 'error');
+});
+
+socket.io.on('error', (error) => {
+    trackConnectionDebug('manager_error', {
+        message: error?.message || String(error)
+    });
 });
 
 function joinRoomByCode(code) {
@@ -684,8 +732,20 @@ socket.on('rematchDeclined', (data) => {
     }, 1800);
 });
 
-socket.on('disconnect', () => {
-    showToast('Disconnected from server', 'error');
+socket.on('connect_error', (error) => {
+    trackConnectionDebug('connect_error', {
+        message: error?.message || String(error)
+    });
+});
+
+socket.on('disconnect', (reason, details) => {
+    trackConnectionDebug('disconnect', {
+        reason,
+        message: details?.message,
+        description: details?.description,
+        context: details?.context
+    });
+    showToast(`Disconnected: ${reason}`, 'error');
     sounds.error();
 });
 

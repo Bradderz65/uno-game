@@ -30,11 +30,19 @@ app.get('/', (req, res) => {
 // Game rooms storage - Load from disk on startup
 const rooms = StateManager.load(io);
 
-// Drop stale lobby rooms on startup (no active sockets after restart)
+// Drop stale rooms on startup: lobbies have no active sockets after restart,
+// and completed games should not be restored as playable rooms.
+let removedStaleRooms = 0;
 for (const [roomCode, room] of rooms) {
-    if (!room.gameStarted) {
+    if (!room.gameStarted || room.winner) {
         rooms.delete(roomCode);
+        removedStaleRooms++;
     }
+}
+
+if (removedStaleRooms > 0) {
+    console.log(`Removed ${removedStaleRooms} stale room(s) from restored state.`);
+    StateManager.save(rooms);
 }
 
 for (const room of rooms.values()) {
@@ -65,8 +73,29 @@ function getLocalIP() {
     return 'localhost';
 }
 
+function getSocketDiagnostics(socket) {
+    return {
+        socketId: socket.id,
+        transport: socket.conn?.transport?.name || 'unknown',
+        address: socket.handshake?.address || 'unknown',
+        userAgent: socket.handshake?.headers?.['user-agent'] || 'unknown',
+        referer: socket.handshake?.headers?.referer || 'unknown'
+    };
+}
+
+function logConnectionEvent(event, details) {
+    console.log(`[Connection] ${event}: ${JSON.stringify(details)}`);
+}
+
 io.on('connection', (socket) => {
-    console.log(`Player connected: ${socket.id}`);
+    logConnectionEvent('connected', getSocketDiagnostics(socket));
+
+    socket.conn.on('upgrade', (transport) => {
+        logConnectionEvent('transport upgraded', {
+            socketId: socket.id,
+            transport: transport.name
+        });
+    });
 
     // Get list of available rooms
     socket.on('getRooms', (callback) => {
@@ -168,6 +197,13 @@ io.on('connection', (socket) => {
             socket.join(roomCode.toUpperCase());
 
             saveState(); // Save state (update player connection status/id)
+            logConnectionEvent('player reconnected', {
+                roomCode: roomCode.toUpperCase(),
+                playerName,
+                previousPlayerId,
+                newPlayerId: socket.id,
+                ...getSocketDiagnostics(socket)
+            });
             callback({
                 success: true,
                 roomCode: roomCode.toUpperCase(),
@@ -372,14 +408,28 @@ io.on('connection', (socket) => {
     });
 
     // Handle disconnect - use grace period for reconnection
-    socket.on('disconnect', () => {
-        console.log(`Player disconnected: ${socket.id}`);
+    socket.on('disconnect', (reason) => {
+        const diagnostics = getSocketDiagnostics(socket);
+        logConnectionEvent('disconnected', {
+            reason,
+            ...diagnostics
+        });
 
         for (const [roomCode, room] of rooms) {
             const player = room.players.find(p => p.id === socket.id);
             if (player) {
+                const disconnectContext = {
+                    roomCode,
+                    playerName: player.name,
+                    gameStarted: room.gameStarted,
+                    currentPlayer: room.players[room.currentPlayerIndex]?.name || null,
+                    playerCount: room.players.length,
+                    reason,
+                    ...diagnostics
+                };
+
                 if (!room.gameStarted) {
-                    console.log(`Player ${player.name} disconnected in lobby ${roomCode}`);
+                    logConnectionEvent('lobby player disconnected', disconnectContext);
                     room.removePlayer(player.id);
 
                     if (room.players.length === 0) {
@@ -398,7 +448,10 @@ io.on('connection', (socket) => {
                 // This ensures if server restarts during grace period, player is still known
                 saveState();
 
-                console.log(`Player ${player.name} marked as disconnected in room ${roomCode}`);
+                logConnectionEvent('game player marked disconnected', {
+                    ...disconnectContext,
+                    disconnectTime: player.disconnectTime
+                });
 
                 // Give 30 seconds to reconnect
                 setTimeout(() => {
@@ -409,7 +462,12 @@ io.on('connection', (socket) => {
                     // If they never return, the room might stay with a ghost player forever?
                     // We might need a cleanup task on server start.
                     if (player.disconnected && room.hasPlayer(player.id)) {
-                        console.log(`Removing ${player.name} after timeout`);
+                        logConnectionEvent('removing disconnected player after grace period', {
+                            roomCode,
+                            playerName: player.name,
+                            playerId: player.id,
+                            graceMs: Date.now() - player.disconnectTime
+                        });
                         room.removePlayer(player.id);
 
                         if (room.players.length === 0) {
