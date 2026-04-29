@@ -154,6 +154,11 @@ io.on('connection', (socket) => {
                 room.unoCalledBy.delete(previousPlayerId);
                 room.unoCalledBy.add(socket.id);
             }
+            if (room.rematchVotes?.has(previousPlayerId)) {
+                const previousVote = room.rematchVotes.get(previousPlayerId);
+                room.rematchVotes.delete(previousPlayerId);
+                room.rematchVotes.set(socket.id, previousVote);
+            }
             socket.join(roomCode.toUpperCase());
 
             saveState(); // Save state (update player connection status/id)
@@ -200,6 +205,36 @@ io.on('connection', (socket) => {
             room.startGame(startingCardCount);
             saveState(); // Save state
         }
+    });
+
+    // Ask all players whether they want to continue with a new round
+    socket.on('requestRematch', (roomCode, callback) => {
+        const room = rooms.get(roomCode);
+        if (!room) {
+            callback?.({ success: false, error: 'Room not found' });
+            return;
+        }
+
+        const result = room.requestRematch(socket.id);
+        saveState();
+        callback?.(result);
+    });
+
+    // Vote on a pending rematch. A "no" vote ends the room for everyone.
+    socket.on('respondRematch', (data, callback) => {
+        const { roomCode, wantsRematch } = data || {};
+        const room = rooms.get(roomCode);
+        if (!room) {
+            callback?.({ success: false, error: 'Room not found' });
+            return;
+        }
+
+        const result = room.respondRematch(socket.id, !!wantsRematch);
+        if (result.declined) {
+            rooms.delete(roomCode);
+        }
+        saveState();
+        callback?.(result);
     });
 
     // Add a bot player (host only, pre-game)

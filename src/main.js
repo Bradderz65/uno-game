@@ -1,4 +1,5 @@
 import { GameClient } from './game-client.js';
+import { areCardsCompatible, isLegalPlayableCard } from './game-rules.js';
 import { sounds } from './sounds.js';
 
 ;(async () => {
@@ -45,7 +46,7 @@ try {
 }
 
 // Initialize game client
-const game = new GameClient(socket);
+const game = new GameClient();
 
 // DOM Elements - Lobby
 const lobbyScreen = document.getElementById('lobby-screen');
@@ -92,6 +93,11 @@ const gameoverModal = document.getElementById('gameover-modal');
 const winnerText = document.getElementById('winner-text');
 const scoresList = document.getElementById('scores-list');
 const playAgainBtn = document.getElementById('play-again-btn');
+const rematchModal = document.getElementById('rematch-modal');
+const rematchStatus = document.getElementById('rematch-status');
+const rematchVotes = document.getElementById('rematch-votes');
+const rematchYesBtn = document.getElementById('rematch-yes-btn');
+const rematchNoBtn = document.getElementById('rematch-no-btn');
 const soundToggle = document.getElementById('sound-toggle');
 
 // Toast container
@@ -119,26 +125,6 @@ const SESSION_ROOM_KEY = 'uno_room_code';
 const SESSION_NAME_KEY = 'uno_player_name';
 const SESSION_ID_KEY = 'uno_player_id';
 
-// Helper: Check compatibility (Must form a valid chain)
-function areCardsCompatible(cards) {
-    if (cards.length <= 1) return true;
-
-    const first = cards[0];
-
-    // Each card must match the FIRST one by VALUE/TYPE only
-    for (let i = 1; i < cards.length; i++) {
-        const current = cards[i];
-
-        // Use loose equality for value to handle potential string/number mismatches
-        const sameValue = first.type === current.type && first.value == current.value;
-
-        if (!sameValue) {
-            return false;
-        }
-    }
-    return true;
-}
-
 // Play Selected Button
 playBtn.addEventListener('click', () => {
     if (selectedCardIndices.size === 0) return;
@@ -150,7 +136,7 @@ playBtn.addEventListener('click', () => {
 
     // Validation (redundant but safe)
     if (!areCardsCompatible(selectedCards)) {
-        showToast("Cards must be identical to play together", "error");
+        showToast("Selected cards cannot be played together", "error");
         return;
     }
 
@@ -506,10 +492,22 @@ colorButtons.forEach(btn => {
 
 // Play again
 playAgainBtn.addEventListener('click', () => {
-    gameoverModal.classList.add('hidden');
-    if (isHost) {
-        socket.emit('startGame', currentRoomCode);
-    }
+    if (!currentRoomCode) return;
+    playAgainBtn.disabled = true;
+    socket.emit('requestRematch', currentRoomCode, (response) => {
+        if (!response?.success) {
+            playAgainBtn.disabled = false;
+            showToast(response?.error || 'Could not request rematch', 'error');
+        }
+    });
+});
+
+rematchYesBtn?.addEventListener('click', () => {
+    respondToRematch(true);
+});
+
+rematchNoBtn?.addEventListener('click', () => {
+    respondToRematch(false);
 });
 
 // Sound toggle
@@ -530,6 +528,9 @@ socket.on('lobbyState', (state) => {
 socket.on('gameStarted', () => {
     lobbyScreen.classList.remove('active');
     gameScreen.classList.add('active');
+    gameoverModal.classList.add('hidden');
+    rematchModal.classList.add('hidden');
+    playAgainBtn.disabled = false;
     gameRoomCode.textContent = currentRoomCode;
     sounds.gameStart();
 });
@@ -635,6 +636,22 @@ socket.on('gameOver', (data) => {
     } else {
         sounds.lose();
     }
+});
+
+socket.on('rematchState', (state) => {
+    showRematchPrompt(state);
+});
+
+socket.on('rematchDeclined', (data) => {
+    rematchModal.classList.add('hidden');
+    gameoverModal.classList.remove('hidden');
+    playAgainBtn.disabled = true;
+    playAgainBtn.textContent = 'Game Ended';
+    showToast(`${data.playerName} ended the game`, 'info');
+    clearSession();
+    setTimeout(() => {
+        location.reload();
+    }, 1800);
 });
 
 socket.on('disconnect', () => {
@@ -1152,47 +1169,6 @@ function getCardDisplayValue(card) {
     }
 }
 
-function canPlayCard(card, topCard, currentColor, drawStack) {
-    // If there's a draw stack, can only play matching stack cards
-    if (drawStack > 0) {
-        if (topCard.type === 'draw_two' && card.type === 'draw_two') return true;
-        if (topCard.type === 'wild_draw_four' && card.type === 'wild_draw_four') return true;
-        return false;
-    }
-
-    // Wild cards can always be played
-    if (card.type === 'wild' || card.type === 'wild_draw_four') {
-        return true;
-    }
-
-    // Same color
-    if (card.color === currentColor) {
-        return true;
-    }
-
-    // Same type for action cards
-    if (card.type !== 'number' && card.type === topCard.type) {
-        return true;
-    }
-
-    // Same number
-    if (card.type === 'number' && topCard.type === 'number' && card.value == topCard.value) {
-        return true;
-    }
-
-    return false;
-}
-
-function isLegalPlayableCard(card, handSize, topCard, currentColor, drawStack) {
-    if (!canPlayCard(card, topCard, currentColor, drawStack)) return false;
-
-    if (handSize === 1 && card.type !== 'number') {
-        return false;
-    }
-
-    return true;
-}
-
 function showCatchPanel(players) {
     catchPanel.classList.remove('hidden');
     // Update label to be more descriptive
@@ -1220,6 +1196,8 @@ function showCatchPanel(players) {
 
 function showGameOver(data) {
     winnerText.textContent = `${data.winner.name} Wins`;
+    playAgainBtn.disabled = false;
+    playAgainBtn.textContent = 'Play Again';
 
     scoresList.innerHTML = '';
     // Scores are already sorted by server (1st place first)
@@ -1239,6 +1217,46 @@ function showGameOver(data) {
 
     // Show confetti
     createConfetti();
+}
+
+function showRematchPrompt(state) {
+    if (!state) return;
+
+    gameoverModal.classList.add('hidden');
+    rematchModal.classList.remove('hidden');
+    rematchStatus.textContent = `${state.acceptedCount}/${state.totalCount} ready`;
+    rematchVotes.innerHTML = '';
+
+    state.players.forEach(player => {
+        const item = document.createElement('div');
+        item.className = `rematch-vote ${player.accepted ? 'accepted' : ''}`;
+        item.innerHTML = `
+            <span>${escapeHtml(player.name)}${player.isBot ? ' Bot' : ''}</span>
+            <span>${player.accepted ? 'Ready' : 'Waiting'}</span>
+        `;
+        rematchVotes.appendChild(item);
+    });
+
+    const myVote = state.players.find(player => player.id === myPlayerId);
+    const hasAnswered = myVote?.accepted === true;
+    rematchYesBtn.disabled = hasAnswered;
+    rematchYesBtn.textContent = hasAnswered ? 'Ready' : 'Continue';
+    rematchNoBtn.disabled = false;
+}
+
+function respondToRematch(wantsRematch) {
+    if (!currentRoomCode) return;
+
+    rematchYesBtn.disabled = true;
+    rematchNoBtn.disabled = true;
+
+    socket.emit('respondRematch', { roomCode: currentRoomCode, wantsRematch }, (response) => {
+        if (!response?.success && !response?.declined) {
+            rematchYesBtn.disabled = false;
+            rematchNoBtn.disabled = false;
+            showToast(response?.error || 'Could not update rematch vote', 'error');
+        }
+    });
 }
 
 function getOrdinal(n) {

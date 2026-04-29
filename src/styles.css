@@ -2298,6 +2298,60 @@ input[type="number"]:focus {
   border: 1px solid rgba(201, 162, 77, 0.45);
 }
 
+.rematch {
+  min-width: min(92vw, 360px);
+  text-align: center;
+}
+
+.rematch h2 {
+  margin-bottom: 0.5rem;
+  letter-spacing: 0;
+}
+
+.rematch p {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.rematch-votes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.rematch-vote {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rematch-vote.accepted {
+  background: rgba(201, 162, 77, 0.2);
+  border-color: rgba(201, 162, 77, 0.45);
+}
+
+.rematch-vote span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rematch-vote span:last-child {
+  color: #d8c48b;
+  font-weight: 700;
+}
+
+.rematch-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
 @media (max-width: 600px) {
   .game-header {
     align-items: flex-start;

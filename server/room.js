@@ -1,4 +1,4 @@
-import { createDeck, shuffleDeck, canPlayCard, areCardsCompatible, CARD_TYPES, COLORS } from './game.js';
+import { createDeck, shuffleDeck, canPlayCard, areCardsCompatible, isPlusCard, CARD_TYPES, COLORS } from './game.js';
 
 export class GameRoom {
     constructor(roomCode, io) {
@@ -18,6 +18,7 @@ export class GameRoom {
         this.winner = null;
         this.hasDrawnThisTurn = false;
         this.pendingBotTurn = null;
+        this.rematchVotes = null;
     }
 
     addPlayer(socket, name) {
@@ -155,6 +156,7 @@ export class GameRoom {
         this.unoCalledBy.clear();
         this.winner = null;
         this.hasDrawnThisTurn = false;
+        this.rematchVotes = null;
         this.isDealing = true;
 
         // Initialize empty hands
@@ -283,10 +285,9 @@ export class GameRoom {
         const firstCard = cardsToPlay[0];
         let isPlayable = false;
 
-        // Must draw if there's a stack and card isn't matching stack type
+        // During a pending draw stack, only plus cards can be stacked.
         if (this.drawStack > 0) {
-            isPlayable = (topCard.type === CARD_TYPES.DRAW_TWO && firstCard.type === CARD_TYPES.DRAW_TWO) ||
-                         (topCard.type === CARD_TYPES.WILD_DRAW_FOUR && firstCard.type === CARD_TYPES.WILD_DRAW_FOUR);
+            isPlayable = isPlusCard(topCard) && isPlusCard(firstCard);
         } else {
             isPlayable = canPlayCard(firstCard, topCard, this.currentColor);
         }
@@ -376,6 +377,7 @@ export class GameRoom {
         // Check for win
         if (player.hand.length === 0) {
             this.winner = player;
+            this.rematchVotes = null;
             this.io.to(this.roomCode).emit('gameOver', {
                 winner: { id: player.id, name: player.name },
                 scores: this.calculateScores(player.id)
@@ -429,38 +431,6 @@ export class GameRoom {
         });
 
         this.broadcastGameState();
-    }
-
-    handleCardEffect(card) {
-        switch (card.type) {
-            case CARD_TYPES.SKIP:
-                this.nextTurn(); // Skip next player
-                this.nextTurn();
-                break;
-            case CARD_TYPES.REVERSE:
-                this.direction *= -1;
-                if (this.players.length === 2) {
-                    // In 2-player, reverse acts like skip
-                    this.nextTurn();
-                    this.nextTurn();
-                } else {
-                    this.nextTurn();
-                }
-                break;
-            case CARD_TYPES.DRAW_TWO:
-                this.drawStack += 2;
-                this.nextTurn();
-                break;
-            case CARD_TYPES.WILD:
-                this.nextTurn();
-                break;
-            case CARD_TYPES.WILD_DRAW_FOUR:
-                this.drawStack += 4;
-                this.nextTurn();
-                break;
-            default:
-                this.nextTurn();
-        }
     }
 
     drawCard(playerId) {
@@ -542,6 +512,94 @@ export class GameRoom {
             // Refresh state immediately so catch targets and UNO availability are in sync.
             this.broadcastGameState();
         }
+    }
+
+    requestRematch(playerId) {
+        if (!this.winner) {
+            return { success: false, error: 'The game is still in progress' };
+        }
+
+        if (!this.players.some(p => p.id === playerId)) {
+            return { success: false, error: 'Player not found' };
+        }
+
+        if (!this.rematchVotes) {
+            this.rematchVotes = new Map();
+            for (const player of this.players) {
+                if (player.isBot) {
+                    this.rematchVotes.set(player.id, true);
+                }
+            }
+        }
+
+        this.rematchVotes.set(playerId, true);
+        return this.resolveRematchState();
+    }
+
+    respondRematch(playerId, wantsRematch) {
+        if (!this.winner) {
+            return { success: false, error: 'The game is still in progress' };
+        }
+
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) {
+            return { success: false, error: 'Player not found' };
+        }
+
+        if (!wantsRematch) {
+            this.rematchVotes = null;
+            this.clearPendingBotTurn();
+            this.io.to(this.roomCode).emit('rematchDeclined', {
+                playerId: player.id,
+                playerName: player.name
+            });
+            return { success: true, declined: true };
+        }
+
+        if (!this.rematchVotes) {
+            this.rematchVotes = new Map();
+            for (const p of this.players) {
+                if (p.isBot) {
+                    this.rematchVotes.set(p.id, true);
+                }
+            }
+        }
+
+        this.rematchVotes.set(playerId, true);
+        return this.resolveRematchState();
+    }
+
+    resolveRematchState() {
+        const state = this.getRematchState();
+        if (!state) {
+            return { success: false, error: 'Rematch is not available' };
+        }
+
+        this.io.to(this.roomCode).emit('rematchState', state);
+
+        if (state.acceptedCount === state.totalCount) {
+            this.startGame();
+            return { success: true, started: true, state };
+        }
+
+        return { success: true, started: false, state };
+    }
+
+    getRematchState() {
+        if (!this.rematchVotes) return null;
+
+        const players = this.players.map(player => ({
+            id: player.id,
+            name: player.name,
+            isBot: player.isBot,
+            accepted: this.rematchVotes.get(player.id) === true
+        }));
+
+        return {
+            players,
+            acceptedCount: players.filter(player => player.accepted).length,
+            totalCount: players.length
+        };
     }
 
     catchUno(catcherId, targetPlayerId) {
@@ -659,8 +717,7 @@ export class GameRoom {
         const playableGroups = [];
         for (const group of groups.values()) {
             if (drawStack > 0) {
-                if ((topCard.type === CARD_TYPES.DRAW_TWO && group.card.type === CARD_TYPES.DRAW_TWO) ||
-                    (topCard.type === CARD_TYPES.WILD_DRAW_FOUR && group.card.type === CARD_TYPES.WILD_DRAW_FOUR)) {
+                if (isPlusCard(topCard) && isPlusCard(group.card)) {
                     playableGroups.push(group);
                 }
             } else if (canPlayCard(group.card, topCard, currentColor)) {
@@ -687,8 +744,7 @@ export class GameRoom {
 
         if (drawStack > 0) {
             return player.hand.some(card =>
-                (topCard.type === CARD_TYPES.DRAW_TWO && card.type === CARD_TYPES.DRAW_TWO) ||
-                (topCard.type === CARD_TYPES.WILD_DRAW_FOUR && card.type === CARD_TYPES.WILD_DRAW_FOUR)
+                isPlusCard(topCard) && isPlusCard(card)
             );
         }
 
@@ -986,6 +1042,7 @@ export class GameRoom {
             unoCalledBy: Array.from(this.unoCalledBy),
             winner: this.winner ? { id: this.winner.id, name: this.winner.name } : null,
             hasDrawnThisTurn: this.hasDrawnThisTurn,
+            rematchVotes: this.rematchVotes ? Array.from(this.rematchVotes.entries()) : null,
             bannedPlayerIds: Array.from(this.bannedPlayerIds),
             bannedPlayerNames: Array.from(this.bannedPlayerNames),
             players: this.players.map(p => ({
@@ -1011,6 +1068,7 @@ export class GameRoom {
         room.unoCalledBy = new Set(state.unoCalledBy);
         room.winner = state.winner;
         room.hasDrawnThisTurn = state.hasDrawnThisTurn || false;
+        room.rematchVotes = state.rematchVotes ? new Map(state.rematchVotes) : null;
         room.bannedPlayerIds = new Set(state.bannedPlayerIds || []);
         room.bannedPlayerNames = new Set(state.bannedPlayerNames || []);
         room.players = state.players.map(p => ({

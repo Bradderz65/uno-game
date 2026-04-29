@@ -1,9 +1,10 @@
+import { canPlayCard } from './game-rules.js';
+
 /**
  * GameClient - Client-side game state management
  */
 export class GameClient {
-    constructor(socket) {
-        this.socket = socket;
+    constructor() {
         this.state = null;
         this.myPlayerId = null;
         this.isMyTurn = false;
@@ -53,43 +54,11 @@ export class GameClient {
     getPlayableCards() {
         if (!this.isMyTurn) return [];
 
-        return this.hand.filter((card, index) => {
-            return this.canPlay(card);
-        });
+        return this.hand.filter(card => this.canPlay(card));
     }
 
     canPlay(card) {
-        if (!this.topCard || !this.currentColor) return false;
-
-        // If there's a draw stack, can only stack
-        if (this.drawStack > 0) {
-            if (this.topCard.type === 'draw_two' && card.type === 'draw_two') return true;
-            if (this.topCard.type === 'wild_draw_four' && card.type === 'wild_draw_four') return true;
-            return false;
-        }
-
-        // Wild cards always playable
-        if (card.type === 'wild' || card.type === 'wild_draw_four') {
-            return true;
-        }
-
-        // Same color
-        if (card.color === this.currentColor) {
-            return true;
-        }
-
-        // Same type (for action cards)
-        if (card.type !== 'number' && card.type === this.topCard.type) {
-            return true;
-        }
-
-        // Same number
-        if (card.type === 'number' && this.topCard.type === 'number' &&
-            card.value === this.topCard.value) {
-            return true;
-        }
-
-        return false;
+        return canPlayCard(card, this.topCard, this.currentColor, this.drawStack);
     }
 
     shouldCallUno() {

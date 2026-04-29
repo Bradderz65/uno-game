@@ -11,6 +11,10 @@ export const CARD_TYPES = {
     WILD_DRAW_FOUR: 'wild_draw_four'
 };
 
+export function isPlusCard(card) {
+    return card?.type === CARD_TYPES.DRAW_TWO || card?.type === CARD_TYPES.WILD_DRAW_FOUR;
+}
+
 // Create a standard UNO deck
 export function createDeck() {
     const deck = [];
@@ -57,8 +61,15 @@ export function shuffleDeck(deck) {
 
 // Check if a card can be played on top of another
 export function canPlayCard(card, topCard, currentColor) {
+    if (!card || !topCard) return false;
+
     // Wild cards can always be played
     if (card.type === CARD_TYPES.WILD || card.type === CARD_TYPES.WILD_DRAW_FOUR) {
+        return true;
+    }
+
+    // Any draw card can be played on any draw card (+2 on +4, +4 on +2).
+    if (isPlusCard(card) && isPlusCard(topCard)) {
         return true;
     }
 
@@ -86,10 +97,12 @@ export function areCardsCompatible(cards) {
     
     const first = cards[0];
 
-    // Each card must match the FIRST one by VALUE/TYPE only
+    // Each card must match the first one by value/type, except plus cards stack together.
     for (let i = 1; i < cards.length; i++) {
         const current = cards[i];
         
+        if (isPlusCard(first) && isPlusCard(current)) continue;
+
         const sameValue = first.type === current.type && first.value == current.value;
         
         if (!sameValue) return false;
