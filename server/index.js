@@ -37,6 +37,12 @@ for (const [roomCode, room] of rooms) {
     }
 }
 
+for (const room of rooms.values()) {
+    if (room.gameStarted) {
+        setTimeout(() => room.maybeHandleBotTurn(), 250);
+    }
+}
+
 // Helper to save state
 function saveState() {
     StateManager.save(rooms);

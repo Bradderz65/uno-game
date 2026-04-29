@@ -970,130 +970,150 @@
         "color": "blue",
         "type": "number",
         "value": 8
-      },
+      }
+    ],
+    "discardPile": [
       {
-        "id": 98,
-        "color": "blue",
-        "type": "reverse",
-        "value": "reverse"
-      },
-      {
-        "id": 23,
-        "color": "red",
-        "type": "reverse",
-        "value": "reverse"
-      },
-      {
-        "id": 56,
-        "color": "green",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 74,
-        "color": "green",
-        "type": "draw_two",
-        "value": "+2"
-      },
-      {
-        "id": 79,
-        "color": "blue",
-        "type": "number",
-        "value": 2
-      },
-      {
-        "id": 85,
-        "color": "blue",
-        "type": "number",
-        "value": 5
-      },
-      {
-        "id": 67,
-        "color": "green",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 50,
-        "color": "green",
-        "type": "number",
-        "value": 0
-      },
-      {
-        "id": 14,
-        "color": "red",
+        "id": 38,
+        "color": "yellow",
         "type": "number",
         "value": 7
       },
       {
-        "id": 80,
-        "color": "blue",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 69,
-        "color": "green",
-        "type": "skip",
-        "value": "skip"
-      },
-      {
-        "id": 35,
+        "id": 34,
         "color": "yellow",
         "type": "number",
         "value": 5
       },
       {
-        "id": 6,
-        "color": "red",
+        "id": 59,
+        "color": "green",
         "type": "number",
-        "value": 3
+        "value": 5
       },
       {
-        "id": 94,
-        "color": "blue",
+        "id": 51,
+        "color": "green",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 72,
+        "color": "green",
         "type": "skip",
         "value": "skip"
       },
       {
-        "id": 16,
-        "color": "red",
+        "id": 44,
+        "color": "yellow",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 33,
+        "color": "yellow",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 40,
+        "color": "yellow",
         "type": "number",
         "value": 8
       },
       {
-        "id": 42,
+        "id": 31,
+        "color": "yellow",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 107,
+        "color": "wild",
+        "type": "wild_draw_four",
+        "value": "+4"
+      },
+      {
+        "id": 8,
+        "color": "red",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 57,
+        "color": "green",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 105,
+        "color": "wild",
+        "type": "wild_draw_four",
+        "value": "+4"
+      },
+      {
+        "id": 2,
+        "color": "red",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 77,
+        "color": "blue",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 87,
+        "color": "blue",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 61,
+        "color": "green",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 62,
+        "color": "green",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 68,
+        "color": "green",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 43,
         "color": "yellow",
         "type": "number",
         "value": 9
       },
       {
-        "id": 89,
-        "color": "blue",
-        "type": "number",
-        "value": 7
-      },
-      {
-        "id": 21,
-        "color": "red",
-        "type": "draw_two",
-        "value": "+2"
-      },
-      {
-        "id": 84,
-        "color": "blue",
-        "type": "number",
-        "value": 5
-      },
-      {
-        "id": 70,
-        "color": "green",
+        "id": 48,
+        "color": "yellow",
         "type": "reverse",
         "value": "reverse"
       },
       {
-        "id": 24,
-        "color": "red",
+        "id": 95,
+        "color": "blue",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 99,
+        "color": "blue",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 71,
+        "color": "green",
         "type": "draw_two",
         "value": "+2"
       },
@@ -1110,58 +1130,10 @@
         "value": "wild"
       },
       {
-        "id": 1,
+        "id": 0,
         "color": "red",
         "type": "number",
-        "value": 1
-      },
-      {
-        "id": 93,
-        "color": "blue",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 43,
-        "color": "yellow",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 71,
-        "color": "green",
-        "type": "draw_two",
-        "value": "+2"
-      },
-      {
-        "id": 99,
-        "color": "blue",
-        "type": "draw_two",
-        "value": "+2"
-      },
-      {
-        "id": 68,
-        "color": "green",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 62,
-        "color": "green",
-        "type": "number",
-        "value": 6
-      },
-      {
-        "id": 48,
-        "color": "yellow",
-        "type": "reverse",
-        "value": "reverse"
-      },
-      {
-        "id": 105,
-        "color": "wild",
-        "type": "wild_draw_four",
-        "value": "+4"
+        "value": 0
       },
       {
         "id": 5,
@@ -1170,14 +1142,8 @@
         "value": 3
       },
       {
-        "id": 107,
-        "color": "wild",
-        "type": "wild_draw_four",
-        "value": "+4"
-      },
-      {
-        "id": 77,
-        "color": "blue",
+        "id": 1,
+        "color": "red",
         "type": "number",
         "value": 1
       },
@@ -1188,22 +1154,22 @@
         "value": "skip"
       },
       {
-        "id": 61,
-        "color": "green",
-        "type": "number",
-        "value": 6
+        "id": 24,
+        "color": "red",
+        "type": "draw_two",
+        "value": "+2"
       },
       {
-        "id": 57,
-        "color": "green",
-        "type": "number",
-        "value": 4
+        "id": 21,
+        "color": "red",
+        "type": "draw_two",
+        "value": "+2"
       },
       {
-        "id": 2,
+        "id": 16,
         "color": "red",
         "type": "number",
-        "value": 1
+        "value": 8
       },
       {
         "id": 90,
@@ -1212,50 +1178,129 @@
         "value": 8
       },
       {
-        "id": 0,
-        "color": "red",
+        "id": 93,
+        "color": "blue",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 42,
+        "color": "yellow",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 35,
+        "color": "yellow",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 84,
+        "color": "blue",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 89,
+        "color": "blue",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 94,
+        "color": "blue",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 69,
+        "color": "green",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 70,
+        "color": "green",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 50,
+        "color": "green",
         "type": "number",
         "value": 0
       },
       {
-        "id": 31,
-        "color": "yellow",
+        "id": 67,
+        "color": "green",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 74,
+        "color": "green",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 56,
+        "color": "green",
         "type": "number",
         "value": 3
       },
       {
-        "id": 8,
+        "id": 6,
         "color": "red",
         "type": "number",
-        "value": 4
+        "value": 3
       },
       {
-        "id": 95,
+        "id": 80,
+        "color": "blue",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 85,
+        "color": "blue",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 79,
+        "color": "blue",
+        "type": "number",
+        "value": 2
+      },
+      {
+        "id": 98,
         "color": "blue",
         "type": "reverse",
         "value": "reverse"
       },
       {
-        "id": 72,
-        "color": "green",
-        "type": "skip",
-        "value": "skip"
-      }
-    ],
-    "discardPile": [
+        "id": 23,
+        "color": "red",
+        "type": "reverse",
+        "value": "reverse"
+      },
       {
-        "id": 38,
-        "color": "yellow",
+        "id": 14,
+        "color": "red",
         "type": "number",
         "value": 7
       }
     ],
     "currentPlayerIndex": 0,
-    "direction": 1,
-    "currentColor": "yellow",
+    "direction": -1,
+    "currentColor": "red",
     "drawStack": 0,
     "unoCalledBy": [],
-    "winner": null,
+    "winner": {
+      "id": "bot_1770072538374_nfbv",
+      "name": "Bot 1"
+    },
     "hasDrawnThisTurn": false,
     "customCardConfig": {
       "enabled": false,
@@ -1263,7 +1308,7 @@
       "count": 2
     },
     "startingCardCount": 7,
-    "actionLockedUntil": 0,
+    "actionLockedUntil": 1777487821062,
     "rematchVotes": null,
     "bannedPlayerIds": [],
     "bannedPlayerNames": [],
@@ -1271,50 +1316,7 @@
       {
         "id": "bot_1770072538374_nfbv",
         "name": "Bot 1",
-        "hand": [
-          {
-            "id": 44,
-            "color": "yellow",
-            "type": "skip",
-            "value": "skip"
-          },
-          {
-            "id": 33,
-            "color": "yellow",
-            "type": "number",
-            "value": 4
-          },
-          {
-            "id": 40,
-            "color": "yellow",
-            "type": "number",
-            "value": 8
-          },
-          {
-            "id": 34,
-            "color": "yellow",
-            "type": "number",
-            "value": 5
-          },
-          {
-            "id": 59,
-            "color": "green",
-            "type": "number",
-            "value": 5
-          },
-          {
-            "id": 87,
-            "color": "blue",
-            "type": "number",
-            "value": 6
-          },
-          {
-            "id": 51,
-            "color": "green",
-            "type": "number",
-            "value": 1
-          }
-        ],
+        "hand": [],
         "isHost": true,
         "isBot": true,
         "disconnected": true
@@ -7895,15 +7897,357 @@
       }
     ]
   },
-  "ATGD": {
-    "roomCode": "ATGD",
+  "MBQA": {
+    "roomCode": "MBQA",
     "gameStarted": true,
     "deck": [
+      {
+        "id": 70,
+        "color": "green",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 15,
+        "color": "red",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 98,
+        "color": "blue",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 16,
+        "color": "red",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 17,
+        "color": "red",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 73,
+        "color": "green",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 106,
+        "color": "wild",
+        "type": "wild",
+        "value": "wild"
+      },
+      {
+        "id": 30,
+        "color": "yellow",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 51,
+        "color": "green",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 40,
+        "color": "yellow",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 81,
+        "color": "blue",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 67,
+        "color": "green",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 77,
+        "color": "blue",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 68,
+        "color": "green",
+        "type": "number",
+        "value": 9
+      },
       {
         "id": 21,
         "color": "red",
         "type": "draw_two",
         "value": "+2"
+      },
+      {
+        "id": 8,
+        "color": "red",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 92,
+        "color": "blue",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 55,
+        "color": "green",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 61,
+        "color": "green",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 87,
+        "color": "blue",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 19,
+        "color": "red",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 44,
+        "color": "yellow",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 90,
+        "color": "blue",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 57,
+        "color": "green",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 33,
+        "color": "yellow",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 11,
+        "color": "red",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 104,
+        "color": "wild",
+        "type": "wild",
+        "value": "wild"
+      },
+      {
+        "id": 64,
+        "color": "green",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 63,
+        "color": "green",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 24,
+        "color": "red",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 93,
+        "color": "blue",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 13,
+        "color": "red",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 78,
+        "color": "blue",
+        "type": "number",
+        "value": 2
+      },
+      {
+        "id": 26,
+        "color": "yellow",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 100,
+        "color": "wild",
+        "type": "wild",
+        "value": "wild"
+      },
+      {
+        "id": 14,
+        "color": "red",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 36,
+        "color": "yellow",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 71,
+        "color": "green",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 2,
+        "color": "red",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 62,
+        "color": "green",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 66,
+        "color": "green",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 4,
+        "color": "red",
+        "type": "number",
+        "value": 2
+      },
+      {
+        "id": 52,
+        "color": "green",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 79,
+        "color": "blue",
+        "type": "number",
+        "value": 2
+      },
+      {
+        "id": 53,
+        "color": "green",
+        "type": "number",
+        "value": 2
+      },
+      {
+        "id": 86,
+        "color": "blue",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 29,
+        "color": "yellow",
+        "type": "number",
+        "value": 2
+      },
+      {
+        "id": 46,
+        "color": "yellow",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 23,
+        "color": "red",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 18,
+        "color": "red",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 1,
+        "color": "red",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 35,
+        "color": "yellow",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 41,
+        "color": "yellow",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 22,
+        "color": "red",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 76,
+        "color": "blue",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 88,
+        "color": "blue",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 82,
+        "color": "blue",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 83,
+        "color": "blue",
+        "type": "number",
+        "value": 4
       },
       {
         "id": 75,
@@ -7918,156 +8262,10 @@
         "value": 5
       },
       {
-        "id": 80,
-        "color": "blue",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 48,
-        "color": "yellow",
-        "type": "reverse",
-        "value": "reverse"
-      },
-      {
-        "id": 100,
-        "color": "wild",
-        "type": "wild",
-        "value": "wild"
-      },
-      {
-        "id": 24,
-        "color": "red",
-        "type": "draw_two",
-        "value": "+2"
-      },
-      {
-        "id": 74,
-        "color": "green",
-        "type": "draw_two",
-        "value": "+2"
-      },
-      {
-        "id": 54,
-        "color": "green",
-        "type": "number",
-        "value": 2
-      },
-      {
-        "id": 91,
-        "color": "blue",
-        "type": "number",
-        "value": 8
-      },
-      {
-        "id": 68,
-        "color": "green",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 95,
-        "color": "blue",
-        "type": "reverse",
-        "value": "reverse"
-      },
-      {
-        "id": 70,
-        "color": "green",
-        "type": "reverse",
-        "value": "reverse"
-      },
-      {
-        "id": 43,
+        "id": 32,
         "color": "yellow",
         "type": "number",
-        "value": 9
-      },
-      {
-        "id": 65,
-        "color": "green",
-        "type": "number",
-        "value": 8
-      },
-      {
-        "id": 104,
-        "color": "wild",
-        "type": "wild",
-        "value": "wild"
-      },
-      {
-        "id": 89,
-        "color": "blue",
-        "type": "number",
-        "value": 7
-      },
-      {
-        "id": 28,
-        "color": "yellow",
-        "type": "number",
-        "value": 2
-      },
-      {
-        "id": 99,
-        "color": "blue",
-        "type": "draw_two",
-        "value": "+2"
-      },
-      {
-        "id": 38,
-        "color": "yellow",
-        "type": "number",
-        "value": 7
-      },
-      {
-        "id": 20,
-        "color": "red",
-        "type": "reverse",
-        "value": "reverse"
-      },
-      {
-        "id": 106,
-        "color": "wild",
-        "type": "wild",
-        "value": "wild"
-      },
-      {
-        "id": 84,
-        "color": "blue",
-        "type": "number",
-        "value": 5
-      },
-      {
-        "id": 0,
-        "color": "red",
-        "type": "number",
-        "value": 0
-      },
-      {
-        "id": 11,
-        "color": "red",
-        "type": "number",
-        "value": 6
-      }
-    ],
-    "discardPile": [
-      {
-        "id": 59,
-        "color": "green",
-        "type": "number",
-        "value": 5
-      },
-      {
-        "id": 69,
-        "color": "green",
-        "type": "skip",
-        "value": "skip"
-      },
-      {
-        "id": 22,
-        "color": "red",
-        "type": "skip",
-        "value": "skip"
+        "value": 4
       },
       {
         "id": 94,
@@ -8076,16 +8274,30 @@
         "value": "skip"
       },
       {
-        "id": 96,
-        "color": "blue",
-        "type": "draw_two",
-        "value": "+2"
+        "id": 12,
+        "color": "red",
+        "type": "number",
+        "value": 6
       },
       {
-        "id": 103,
-        "color": "wild",
-        "type": "wild_draw_four",
-        "value": "+4"
+        "id": 65,
+        "color": "green",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 5,
+        "color": "red",
+        "type": "number",
+        "value": 3
+      }
+    ],
+    "discardPile": [
+      {
+        "id": 45,
+        "color": "yellow",
+        "type": "reverse",
+        "value": "reverse"
       },
       {
         "id": 107,
@@ -8094,8 +8306,20 @@
         "value": "+4"
       },
       {
-        "id": 46,
-        "color": "yellow",
+        "id": 103,
+        "color": "wild",
+        "type": "wild_draw_four",
+        "value": "+4"
+      },
+      {
+        "id": 74,
+        "color": "green",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 96,
+        "color": "blue",
         "type": "draw_two",
         "value": "+2"
       },
@@ -8106,7 +8330,676 @@
         "value": "+4"
       },
       {
+        "id": 99,
+        "color": "blue",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 49,
+        "color": "yellow",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 80,
+        "color": "blue",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 31,
+        "color": "yellow",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 56,
+        "color": "green",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 69,
+        "color": "green",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 50,
+        "color": "green",
+        "type": "number",
+        "value": 0
+      },
+      {
+        "id": 60,
+        "color": "green",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 59,
+        "color": "green",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 9,
+        "color": "red",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 85,
+        "color": "blue",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 10,
+        "color": "red",
+        "type": "number",
+        "value": 5
+      }
+    ],
+    "currentPlayerIndex": 0,
+    "direction": -1,
+    "currentColor": "red",
+    "drawStack": 0,
+    "unoCalledBy": [],
+    "winner": {
+      "id": "bot_1777486948802_ncxy",
+      "name": "Bot 1"
+    },
+    "hasDrawnThisTurn": false,
+    "customCardConfig": {
+      "enabled": false,
+      "drawAmount": 8,
+      "count": 2
+    },
+    "startingCardCount": 11,
+    "actionLockedUntil": 0,
+    "rematchVotes": null,
+    "bannedPlayerIds": [],
+    "bannedPlayerNames": [],
+    "players": [
+      {
+        "id": "bot_1777486948802_ncxy",
+        "name": "Bot 1",
+        "hand": [
+          {
+            "id": 39,
+            "color": "yellow",
+            "type": "number",
+            "value": 7
+          },
+          {
+            "id": 54,
+            "color": "green",
+            "type": "number",
+            "value": 2
+          },
+          {
+            "id": 95,
+            "color": "blue",
+            "type": "reverse",
+            "value": "reverse"
+          },
+          {
+            "id": 27,
+            "color": "yellow",
+            "type": "number",
+            "value": 1
+          },
+          {
+            "id": 72,
+            "color": "green",
+            "type": "skip",
+            "value": "skip"
+          },
+          {
+            "id": 3,
+            "color": "red",
+            "type": "number",
+            "value": 2
+          },
+          {
+            "id": 48,
+            "color": "yellow",
+            "type": "reverse",
+            "value": "reverse"
+          },
+          {
+            "id": 97,
+            "color": "blue",
+            "type": "skip",
+            "value": "skip"
+          },
+          {
+            "id": 25,
+            "color": "yellow",
+            "type": "number",
+            "value": 0
+          },
+          {
+            "id": 38,
+            "color": "yellow",
+            "type": "number",
+            "value": 7
+          },
+          {
+            "id": 0,
+            "color": "red",
+            "type": "number",
+            "value": 0
+          },
+          {
+            "id": 37,
+            "color": "yellow",
+            "type": "number",
+            "value": 6
+          },
+          {
+            "id": 20,
+            "color": "red",
+            "type": "reverse",
+            "value": "reverse"
+          },
+          {
+            "id": 89,
+            "color": "blue",
+            "type": "number",
+            "value": 7
+          },
+          {
+            "id": 43,
+            "color": "yellow",
+            "type": "number",
+            "value": 9
+          },
+          {
+            "id": 47,
+            "color": "yellow",
+            "type": "skip",
+            "value": "skip"
+          },
+          {
+            "id": 7,
+            "color": "red",
+            "type": "number",
+            "value": 4
+          },
+          {
+            "id": 91,
+            "color": "blue",
+            "type": "number",
+            "value": 8
+          },
+          {
+            "id": 102,
+            "color": "wild",
+            "type": "wild",
+            "value": "wild"
+          },
+          {
+            "id": 101,
+            "color": "wild",
+            "type": "wild_draw_four",
+            "value": "+4"
+          },
+          {
+            "id": 58,
+            "color": "green",
+            "type": "number",
+            "value": 4
+          }
+        ],
+        "isHost": true,
+        "isBot": true,
+        "disconnected": true
+      }
+    ]
+  },
+  "ZNZZ": {
+    "roomCode": "ZNZZ",
+    "gameStarted": true,
+    "deck": [
+      {
+        "id": 52,
+        "color": "green",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 33,
+        "color": "yellow",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 14,
+        "color": "red",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 101,
+        "color": "wild",
+        "type": "wild_draw_four",
+        "value": "+4"
+      },
+      {
+        "id": 57,
+        "color": "green",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 61,
+        "color": "green",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 15,
+        "color": "red",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 30,
+        "color": "yellow",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 43,
+        "color": "yellow",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 55,
+        "color": "green",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 76,
+        "color": "blue",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 51,
+        "color": "green",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 91,
+        "color": "blue",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 56,
+        "color": "green",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 50,
+        "color": "green",
+        "type": "number",
+        "value": 0
+      },
+      {
+        "id": 95,
+        "color": "blue",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 103,
+        "color": "wild",
+        "type": "wild_draw_four",
+        "value": "+4"
+      },
+      {
+        "id": 75,
+        "color": "blue",
+        "type": "number",
+        "value": 0
+      },
+      {
+        "id": 54,
+        "color": "green",
+        "type": "number",
+        "value": 2
+      },
+      {
+        "id": 100,
+        "color": "wild",
+        "type": "wild",
+        "value": "wild"
+      },
+      {
+        "id": 74,
+        "color": "green",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 93,
+        "color": "blue",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 107,
+        "color": "wild",
+        "type": "wild_draw_four",
+        "value": "+4"
+      },
+      {
+        "id": 20,
+        "color": "red",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 96,
+        "color": "blue",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 7,
+        "color": "red",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 47,
+        "color": "yellow",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 25,
+        "color": "yellow",
+        "type": "number",
+        "value": 0
+      },
+      {
+        "id": 49,
+        "color": "yellow",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 85,
+        "color": "blue",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 80,
+        "color": "blue",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 45,
+        "color": "yellow",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 83,
+        "color": "blue",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 84,
+        "color": "blue",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 90,
+        "color": "blue",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 67,
+        "color": "green",
+        "type": "number",
+        "value": 9
+      },
+      {
+        "id": 87,
+        "color": "blue",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 24,
+        "color": "red",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 1,
+        "color": "red",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 21,
+        "color": "red",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 39,
+        "color": "yellow",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 40,
+        "color": "yellow",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 53,
+        "color": "green",
+        "type": "number",
+        "value": 2
+      },
+      {
+        "id": 5,
+        "color": "red",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 48,
+        "color": "yellow",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 81,
+        "color": "blue",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 78,
+        "color": "blue",
+        "type": "number",
+        "value": 2
+      },
+      {
         "id": 72,
+        "color": "green",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 31,
+        "color": "yellow",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 19,
+        "color": "red",
+        "type": "skip",
+        "value": "skip"
+      },
+      {
+        "id": 12,
+        "color": "red",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 77,
+        "color": "blue",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 65,
+        "color": "green",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 58,
+        "color": "green",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 8,
+        "color": "red",
+        "type": "number",
+        "value": 4
+      },
+      {
+        "id": 6,
+        "color": "red",
+        "type": "number",
+        "value": 3
+      },
+      {
+        "id": 23,
+        "color": "red",
+        "type": "reverse",
+        "value": "reverse"
+      },
+      {
+        "id": 79,
+        "color": "blue",
+        "type": "number",
+        "value": 2
+      },
+      {
+        "id": 63,
+        "color": "green",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 41,
+        "color": "yellow",
+        "type": "number",
+        "value": 8
+      },
+      {
+        "id": 88,
+        "color": "blue",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 64,
+        "color": "green",
+        "type": "number",
+        "value": 7
+      },
+      {
+        "id": 46,
+        "color": "yellow",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 26,
+        "color": "yellow",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 99,
+        "color": "blue",
+        "type": "draw_two",
+        "value": "+2"
+      },
+      {
+        "id": 36,
+        "color": "yellow",
+        "type": "number",
+        "value": 6
+      },
+      {
+        "id": 3,
+        "color": "red",
+        "type": "number",
+        "value": 2
+      }
+    ],
+    "discardPile": [
+      {
+        "id": 2,
+        "color": "red",
+        "type": "number",
+        "value": 1
+      },
+      {
+        "id": 9,
+        "color": "red",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 59,
+        "color": "green",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 35,
+        "color": "yellow",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 60,
+        "color": "green",
+        "type": "number",
+        "value": 5
+      },
+      {
+        "id": 69,
         "color": "green",
         "type": "skip",
         "value": "skip"
@@ -8124,258 +9017,22 @@
         "value": "skip"
       },
       {
-        "id": 93,
-        "color": "blue",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 17,
-        "color": "red",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 67,
-        "color": "green",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 42,
-        "color": "yellow",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 36,
-        "color": "yellow",
-        "type": "number",
-        "value": 6
-      },
-      {
-        "id": 62,
-        "color": "green",
-        "type": "number",
-        "value": 6
-      },
-      {
-        "id": 58,
-        "color": "green",
-        "type": "number",
-        "value": 4
-      },
-      {
-        "id": 32,
-        "color": "yellow",
-        "type": "number",
-        "value": 4
-      },
-      {
-        "id": 82,
-        "color": "blue",
-        "type": "number",
-        "value": 4
-      },
-      {
-        "id": 81,
-        "color": "blue",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 5,
-        "color": "red",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 56,
-        "color": "green",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 6,
-        "color": "red",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 14,
-        "color": "red",
-        "type": "number",
-        "value": 7
-      },
-      {
-        "id": 9,
-        "color": "red",
-        "type": "number",
-        "value": 5
-      },
-      {
-        "id": 35,
-        "color": "yellow",
-        "type": "number",
-        "value": 5
-      },
-      {
-        "id": 60,
-        "color": "green",
-        "type": "number",
-        "value": 5
-      },
-      {
-        "id": 53,
-        "color": "green",
-        "type": "number",
-        "value": 2
-      },
-      {
-        "id": 29,
-        "color": "yellow",
-        "type": "number",
-        "value": 2
-      },
-      {
-        "id": 4,
-        "color": "red",
-        "type": "number",
-        "value": 2
-      },
-      {
-        "id": 15,
-        "color": "red",
-        "type": "number",
-        "value": 8
-      },
-      {
-        "id": 90,
-        "color": "blue",
-        "type": "number",
-        "value": 8
-      },
-      {
-        "id": 87,
-        "color": "blue",
-        "type": "number",
-        "value": 6
-      },
-      {
-        "id": 88,
-        "color": "blue",
-        "type": "number",
-        "value": 7
-      },
-      {
         "id": 102,
         "color": "wild",
         "type": "wild",
         "value": "wild"
       },
       {
-        "id": 31,
-        "color": "yellow",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 55,
+        "id": 73,
         "color": "green",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 71,
-        "color": "green",
-        "type": "draw_two",
-        "value": "+2"
-      },
-      {
-        "id": 61,
-        "color": "green",
-        "type": "number",
-        "value": 6
-      },
-      {
-        "id": 50,
-        "color": "green",
-        "type": "number",
-        "value": 0
-      },
-      {
-        "id": 108,
-        "color": "wild",
-        "type": "custom_draw",
-        "value": "+8",
-        "drawAmount": 8,
-        "custom": true
-      },
-      {
-        "id": 92,
-        "color": "blue",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 18,
-        "color": "red",
-        "type": "number",
-        "value": 9
-      },
-      {
-        "id": 19,
-        "color": "red",
-        "type": "skip",
-        "value": "skip"
-      },
-      {
-        "id": 3,
-        "color": "red",
-        "type": "number",
-        "value": 2
-      },
-      {
-        "id": 16,
-        "color": "red",
-        "type": "number",
-        "value": 8
-      },
-      {
-        "id": 41,
-        "color": "yellow",
-        "type": "number",
-        "value": 8
-      },
-      {
-        "id": 40,
-        "color": "yellow",
-        "type": "number",
-        "value": 8
-      },
-      {
-        "id": 45,
-        "color": "yellow",
         "type": "reverse",
         "value": "reverse"
       },
       {
-        "id": 30,
-        "color": "yellow",
-        "type": "number",
-        "value": 3
-      },
-      {
-        "id": 39,
-        "color": "yellow",
-        "type": "number",
-        "value": 7
-      },
-      {
-        "id": 63,
+        "id": 62,
         "color": "green",
         "type": "number",
-        "value": 7
+        "value": 6
       },
       {
         "id": 109,
@@ -8386,210 +9043,53 @@
         "custom": true
       },
       {
-        "id": 77,
-        "color": "blue",
-        "type": "number",
-        "value": 1
-      },
-      {
-        "id": 52,
-        "color": "green",
-        "type": "number",
-        "value": 1
-      },
-      {
-        "id": 2,
-        "color": "red",
-        "type": "number",
-        "value": 1
-      },
-      {
-        "id": 8,
-        "color": "red",
-        "type": "number",
-        "value": 4
-      },
-      {
-        "id": 7,
-        "color": "red",
-        "type": "number",
-        "value": 4
-      },
-      {
-        "id": 13,
-        "color": "red",
-        "type": "number",
-        "value": 7
-      },
-      {
-        "id": 1,
-        "color": "red",
-        "type": "number",
-        "value": 1
-      },
-      {
-        "id": 12,
-        "color": "red",
-        "type": "number",
-        "value": 6
-      },
-      {
-        "id": 86,
-        "color": "blue",
-        "type": "number",
-        "value": 6
-      },
-      {
-        "id": 79,
-        "color": "blue",
-        "type": "number",
-        "value": 2
-      },
-      {
-        "id": 78,
-        "color": "blue",
-        "type": "number",
-        "value": 2
-      },
-      {
-        "id": 101,
+        "id": 105,
         "color": "wild",
         "type": "wild_draw_four",
         "value": "+4"
       },
       {
-        "id": 76,
-        "color": "blue",
-        "type": "number",
-        "value": 1
-      },
-      {
-        "id": 85,
-        "color": "blue",
-        "type": "number",
-        "value": 5
-      },
-      {
-        "id": 10,
-        "color": "red",
-        "type": "number",
-        "value": 5
-      },
-      {
-        "id": 23,
-        "color": "red",
-        "type": "reverse",
-        "value": "reverse"
-      },
-      {
-        "id": 73,
-        "color": "green",
-        "type": "reverse",
-        "value": "reverse"
-      },
-      {
-        "id": 66,
-        "color": "green",
-        "type": "number",
-        "value": 8
-      },
-      {
-        "id": 64,
-        "color": "green",
-        "type": "number",
-        "value": 7
-      },
-      {
-        "id": 51,
-        "color": "green",
-        "type": "number",
-        "value": 1
-      },
-      {
-        "id": 26,
-        "color": "yellow",
-        "type": "number",
-        "value": 1
-      },
-      {
-        "id": 25,
-        "color": "yellow",
-        "type": "number",
-        "value": 0
-      },
-      {
-        "id": 47,
-        "color": "yellow",
-        "type": "skip",
-        "value": "skip"
-      },
-      {
-        "id": 49,
-        "color": "yellow",
-        "type": "draw_two",
-        "value": "+2"
-      },
-      {
-        "id": 27,
-        "color": "yellow",
-        "type": "number",
-        "value": 1
-      },
-      {
-        "id": 37,
-        "color": "yellow",
-        "type": "number",
-        "value": 6
+        "id": 108,
+        "color": "wild",
+        "type": "custom_draw",
+        "value": "+8",
+        "drawAmount": 8,
+        "custom": true
       }
     ],
     "currentPlayerIndex": 1,
     "direction": 1,
-    "currentColor": "yellow",
+    "currentColor": "blue",
     "drawStack": 0,
     "unoCalledBy": [],
-    "winner": {
-      "id": "X8Y5457Hi553gQIPAAAF",
-      "name": "Brad"
-    },
-    "hasDrawnThisTurn": false,
+    "winner": null,
+    "hasDrawnThisTurn": true,
     "customCardConfig": {
       "enabled": true,
       "drawAmount": 8,
       "count": 2
     },
     "startingCardCount": 11,
-    "actionLockedUntil": 1777486671216,
+    "actionLockedUntil": 1777488014141,
     "rematchVotes": null,
     "bannedPlayerIds": [],
     "bannedPlayerNames": [],
     "players": [
       {
-        "id": "OZzpvFN7rza-XIv-AAAH",
-        "name": "steve",
+        "id": "j_EqKmdvadMXO1EeAAAF",
+        "name": "Brad",
         "hand": [
           {
-            "id": 57,
-            "color": "green",
-            "type": "number",
-            "value": 4
-          },
-          {
-            "id": 33,
+            "id": 32,
             "color": "yellow",
             "type": "number",
             "value": 4
           },
           {
-            "id": 83,
-            "color": "blue",
+            "id": 38,
+            "color": "yellow",
             "type": "number",
-            "value": 4
-          },
-          {
-            "id": 98,
-            "color": "blue",
-            "type": "reverse",
-            "value": "reverse"
+            "value": 7
           }
         ],
         "isHost": true,
@@ -8597,9 +9097,172 @@
         "disconnected": true
       },
       {
-        "id": "X8Y5457Hi553gQIPAAAF",
-        "name": "Brad",
-        "hand": [],
+        "id": "N7XhGwTfQuP4V085AAAH",
+        "name": "Steve",
+        "hand": [
+          {
+            "id": 29,
+            "color": "yellow",
+            "type": "number",
+            "value": 2
+          },
+          {
+            "id": 89,
+            "color": "blue",
+            "type": "number",
+            "value": 7
+          },
+          {
+            "id": 18,
+            "color": "red",
+            "type": "number",
+            "value": 9
+          },
+          {
+            "id": 16,
+            "color": "red",
+            "type": "number",
+            "value": 8
+          },
+          {
+            "id": 13,
+            "color": "red",
+            "type": "number",
+            "value": 7
+          },
+          {
+            "id": 68,
+            "color": "green",
+            "type": "number",
+            "value": 9
+          },
+          {
+            "id": 82,
+            "color": "blue",
+            "type": "number",
+            "value": 4
+          },
+          {
+            "id": 22,
+            "color": "red",
+            "type": "skip",
+            "value": "skip"
+          },
+          {
+            "id": 10,
+            "color": "red",
+            "type": "number",
+            "value": 5
+          },
+          {
+            "id": 4,
+            "color": "red",
+            "type": "number",
+            "value": 2
+          },
+          {
+            "id": 42,
+            "color": "yellow",
+            "type": "number",
+            "value": 9
+          },
+          {
+            "id": 94,
+            "color": "blue",
+            "type": "skip",
+            "value": "skip"
+          },
+          {
+            "id": 28,
+            "color": "yellow",
+            "type": "number",
+            "value": 2
+          },
+          {
+            "id": 37,
+            "color": "yellow",
+            "type": "number",
+            "value": 6
+          },
+          {
+            "id": 11,
+            "color": "red",
+            "type": "number",
+            "value": 6
+          },
+          {
+            "id": 34,
+            "color": "yellow",
+            "type": "number",
+            "value": 5
+          },
+          {
+            "id": 71,
+            "color": "green",
+            "type": "draw_two",
+            "value": "+2"
+          },
+          {
+            "id": 27,
+            "color": "yellow",
+            "type": "number",
+            "value": 1
+          },
+          {
+            "id": 66,
+            "color": "green",
+            "type": "number",
+            "value": 8
+          },
+          {
+            "id": 86,
+            "color": "blue",
+            "type": "number",
+            "value": 6
+          },
+          {
+            "id": 70,
+            "color": "green",
+            "type": "reverse",
+            "value": "reverse"
+          },
+          {
+            "id": 106,
+            "color": "wild",
+            "type": "wild",
+            "value": "wild"
+          },
+          {
+            "id": 0,
+            "color": "red",
+            "type": "number",
+            "value": 0
+          },
+          {
+            "id": 17,
+            "color": "red",
+            "type": "number",
+            "value": 9
+          },
+          {
+            "id": 92,
+            "color": "blue",
+            "type": "number",
+            "value": 9
+          },
+          {
+            "id": 98,
+            "color": "blue",
+            "type": "reverse",
+            "value": "reverse"
+          },
+          {
+            "id": 104,
+            "color": "wild",
+            "type": "wild",
+            "value": "wild"
+          }
+        ],
         "isHost": false,
         "isBot": false,
         "disconnected": true

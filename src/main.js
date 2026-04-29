@@ -84,6 +84,7 @@ const deckCount = document.getElementById('deck-count');
 const drawStackIndicator = document.getElementById('draw-stack');
 const drawStackCount = document.getElementById('draw-stack-count');
 const playerHand = document.getElementById('player-hand');
+const autoSortToggle = document.getElementById('auto-sort-toggle');
 const drawBtn = document.getElementById('draw-btn');
 const turnActionIcon = document.getElementById('turn-action-icon');
 const turnActionLabel = document.getElementById('turn-action-label');
@@ -121,6 +122,12 @@ let playerName = null;
 let drawingCardIds = new Set();
 let selectedCardIndices = new Set();
 let pendingPlayAnimation = null;
+let manualSortedCardIds = [];
+let handDragState = null;
+let suppressNextCardClick = false;
+const AUTO_SORT_KEY = 'uno_auto_sort_hand';
+const HAND_DRAG_HOLD_MS = 230;
+const HAND_DRAG_CANCEL_DISTANCE = 10;
 
 // UI Elements for Multi Select
 const playBtn = document.getElementById('play-btn');
@@ -130,6 +137,10 @@ const selectedCountSpan = document.getElementById('selected-count');
 const SESSION_ROOM_KEY = 'uno_room_code';
 const SESSION_NAME_KEY = 'uno_player_name';
 const SESSION_ID_KEY = 'uno_player_id';
+
+if (autoSortToggle) {
+    autoSortToggle.checked = localStorage.getItem(AUTO_SORT_KEY) === 'true';
+}
 
 // Play Selected Button
 playBtn.addEventListener('click', () => {
@@ -432,6 +443,17 @@ leaveGameBtn?.addEventListener('click', leaveRoom);
 // ========================================
 // Event Listeners - Game
 // ========================================
+
+autoSortToggle?.addEventListener('change', () => {
+    localStorage.setItem(AUTO_SORT_KEY, String(autoSortToggle.checked));
+    manualSortedCardIds = [];
+    selectedCardIndices.clear();
+
+    if (game.state?.hand) {
+        updatePlayerHand(game.state.hand, game.state.topCard, game.state.currentColor, game.isMyTurn, game.state.drawStack);
+        updateMultiPlayUI();
+    }
+});
 
 drawBtn.addEventListener('click', () => {
     if (!currentRoomCode || !game.isMyTurn || drawBtn.disabled) return;
@@ -805,7 +827,7 @@ function updateGameUI(state) {
     deckCount.textContent = state.deckCount;
 
     // Top card
-    updateDiscardPile(state.topCard, state.currentColor);
+    updateDiscardPile(state.topCard, state.currentColor, state.discardHistory);
 
     // Opponents
     updateOpponents(state.players, state.currentPlayerId);
@@ -891,18 +913,33 @@ function setTurnActionState({ action, disabled, label, title, status }) {
     turnActionStatus.textContent = status;
 }
 
-function updateDiscardPile(topCard, currentColor) {
+function updateDiscardPile(topCard, currentColor, discardHistory = []) {
     if (!topCard) return;
 
     discardPile.innerHTML = '';
-    const cardEl = createCardElement(topCard, false);
+    const recentCards = (discardHistory.length ? discardHistory : [topCard]).slice(-3);
 
-    // Add a high-contrast chosen-color indicator for wild / +4 cards.
-    if (isWildCard(topCard) && currentColor && currentColor !== 'wild') {
-        applyChosenColorIndicator(cardEl, currentColor);
-    }
+    recentCards.forEach((card, index) => {
+        const cardEl = createCardElement(card, false);
+        const isTopCard = index === recentCards.length - 1;
+        const depth = recentCards.length - 1 - index;
 
-    discardPile.appendChild(cardEl);
+        cardEl.classList.add(isTopCard ? 'discard-top-card' : 'discard-history-card');
+        cardEl.dataset.discardDepth = depth;
+
+        if (depth === 1) {
+            const label = document.createElement('span');
+            label.className = 'discard-history-label';
+            label.textContent = 'Last';
+            cardEl.appendChild(label);
+        }
+
+        if (isTopCard && isWildCard(card) && currentColor && currentColor !== 'wild') {
+            applyChosenColorIndicator(cardEl, currentColor);
+        }
+
+        discardPile.appendChild(cardEl);
+    });
 }
 
 function isWildCard(card) {
@@ -950,7 +987,198 @@ function updateOpponents(players, currentPlayerId) {
     });
 }
 
+function getCardSortRank(card) {
+    const colorRank = {
+        red: 0,
+        yellow: 1,
+        green: 2,
+        blue: 3,
+        wild: 4
+    };
+
+    const typeRank = {
+        number: 0,
+        skip: 1,
+        reverse: 2,
+        draw_two: 3,
+        wild: 4,
+        wild_draw_four: 5,
+        custom_draw: 6
+    };
+
+    return {
+        color: colorRank[card.color] ?? 9,
+        type: typeRank[card.type] ?? 9,
+        value: card.type === 'number' ? Number(card.value) : Number(card.drawAmount || 0)
+    };
+}
+
+function compareCardsForHandSort(a, b) {
+    const aRank = getCardSortRank(a.card);
+    const bRank = getCardSortRank(b.card);
+
+    if (aRank.color !== bRank.color) return aRank.color - bRank.color;
+    if (aRank.type !== bRank.type) return aRank.type - bRank.type;
+    if (aRank.value !== bRank.value) return aRank.value - bRank.value;
+    return a.originalIndex - b.originalIndex;
+}
+
+function getSortedHandEntries(hand) {
+    return hand
+        .map((card, originalIndex) => ({ card, originalIndex }))
+        .sort(compareCardsForHandSort);
+}
+
+function getCurrentDisplayCardIds() {
+    return Array.from(playerHand.querySelectorAll('.hand-card'))
+        .map(cardEl => parseInt(cardEl.dataset.cardId, 10))
+        .filter(Number.isInteger);
+}
+
+function getDisplayHandEntries(hand) {
+    if (autoSortToggle?.checked) {
+        return getSortedHandEntries(hand);
+    }
+
+    if (!manualSortedCardIds.length) {
+        return hand.map((card, originalIndex) => ({ card, originalIndex }));
+    }
+
+    const orderedIds = new Map(manualSortedCardIds.map((id, position) => [id, position]));
+    return hand
+        .map((card, originalIndex) => ({ card, originalIndex }))
+        .sort((a, b) => {
+            const aPosition = orderedIds.has(a.card.id) ? orderedIds.get(a.card.id) : Number.MAX_SAFE_INTEGER;
+            const bPosition = orderedIds.has(b.card.id) ? orderedIds.get(b.card.id) : Number.MAX_SAFE_INTEGER;
+
+            if (aPosition !== bPosition) return aPosition - bPosition;
+            return compareCardsForHandSort(a, b);
+        });
+}
+
+function pruneHandSortState(hand) {
+    const idsInHand = new Set(hand.map(card => card.id));
+    manualSortedCardIds = manualSortedCardIds.filter(id => idsInHand.has(id));
+}
+
+function ensureManualHandOrder(hand) {
+    const existingIds = new Set(hand.map(card => card.id));
+    const visibleOrder = getCurrentDisplayCardIds().filter(id => existingIds.has(id));
+    const knownIds = new Set(visibleOrder);
+    const missingIds = hand
+        .map(card => card.id)
+        .filter(id => !knownIds.has(id));
+
+    manualSortedCardIds = [...visibleOrder, ...missingIds];
+}
+
+function moveCardIdInManualOrder(cardId, targetIndex) {
+    const fromIndex = manualSortedCardIds.indexOf(cardId);
+    if (fromIndex === -1) return false;
+
+    const [cardIdToMove] = manualSortedCardIds.splice(fromIndex, 1);
+    const boundedIndex = Math.max(0, Math.min(targetIndex, manualSortedCardIds.length));
+    manualSortedCardIds.splice(boundedIndex, 0, cardIdToMove);
+    return fromIndex !== boundedIndex;
+}
+
+function getHandDragTargetIndex(pointerX, pointerY, draggedCardId) {
+    const cards = Array.from(playerHand.querySelectorAll('.hand-card'))
+        .filter(cardEl => parseInt(cardEl.dataset.cardId, 10) !== draggedCardId);
+
+    if (!cards.length) return 0;
+
+    for (let index = 0; index < cards.length; index++) {
+        const rect = cards[index].getBoundingClientRect();
+        const midpointX = rect.left + rect.width / 2;
+        const midpointY = rect.top + rect.height / 2;
+        const sameRow = pointerY >= rect.top - rect.height * 0.45 && pointerY <= rect.bottom + rect.height * 0.45;
+
+        if ((sameRow && pointerX < midpointX) || pointerY < midpointY - rect.height * 0.55) {
+            return index;
+        }
+    }
+
+    return cards.length;
+}
+
+function setAutoSortEnabled(enabled) {
+    if (!autoSortToggle) return;
+    autoSortToggle.checked = enabled;
+    localStorage.setItem(AUTO_SORT_KEY, String(enabled));
+}
+
+function updateHandAfterManualReorder() {
+    if (!game.state?.hand) return;
+    updatePlayerHand(game.state.hand, game.state.topCard, game.state.currentColor, game.isMyTurn, game.state.drawStack);
+    updateMultiPlayUI();
+}
+
+function clearHandDragState({ suppressClick = false } = {}) {
+    if (!handDragState) return;
+
+    clearTimeout(handDragState.holdTimer);
+
+    const draggedEl = playerHand.querySelector(`.hand-card[data-card-id="${handDragState.cardId}"]`);
+    draggedEl?.classList.remove('is-reordering');
+    playerHand.classList.remove('is-reordering-hand');
+    document.body.classList.remove('is-reordering-hand');
+
+    if (suppressClick) {
+        suppressNextCardClick = true;
+        window.setTimeout(() => {
+            suppressNextCardClick = false;
+        }, 0);
+    }
+
+    handDragState = null;
+}
+
+function beginHandCardReorder() {
+    if (!handDragState || !game.state?.hand?.length) return;
+
+    setAutoSortEnabled(false);
+    ensureManualHandOrder(game.state.hand);
+
+    handDragState.active = true;
+    selectedCardIndices.clear();
+
+    const draggedEl = playerHand.querySelector(`.hand-card[data-card-id="${handDragState.cardId}"]`);
+    draggedEl?.classList.add('is-reordering');
+    playerHand.classList.add('is-reordering-hand');
+    document.body.classList.add('is-reordering-hand');
+    sounds.click();
+}
+
+function handleHandPointerMove(e) {
+    if (!handDragState) return;
+
+    const distance = Math.hypot(e.clientX - handDragState.startX, e.clientY - handDragState.startY);
+
+    if (!handDragState.active) {
+        if (distance > HAND_DRAG_CANCEL_DISTANCE) {
+            clearHandDragState();
+        }
+        return;
+    }
+
+    e.preventDefault();
+
+    handDragState.pointerX = e.clientX;
+    handDragState.pointerY = e.clientY;
+
+    const targetIndex = getHandDragTargetIndex(e.clientX, e.clientY, handDragState.cardId);
+    if (moveCardIdInManualOrder(handDragState.cardId, targetIndex)) {
+        updateHandAfterManualReorder();
+        const draggedEl = playerHand.querySelector(`.hand-card[data-card-id="${handDragState.cardId}"]`);
+        draggedEl?.classList.add('is-reordering');
+    }
+}
+
 function updatePlayerHand(hand, topCard, currentColor, isMyTurn, drawStack) {
+    pruneHandSortState(hand);
+    const displayHand = getDisplayHandEntries(hand);
+
     // 1. FLIP: First - Capture state
     const snapshots = new Map();
     playerHand.querySelectorAll('.hand-card').forEach(el => {
@@ -969,7 +1197,7 @@ function updatePlayerHand(hand, topCard, currentColor, isMyTurn, drawStack) {
     });
 
     // 2. DOM Updates
-    hand.forEach((card, index) => {
+    displayHand.forEach(({ card, originalIndex }, displayIndex) => {
         let cardEl = existingElements.get(card.id);
 
         if (!cardEl) {
@@ -985,10 +1213,10 @@ function updatePlayerHand(hand, topCard, currentColor, isMyTurn, drawStack) {
         }
 
         // Update Metadata
-        cardEl.dataset.index = index;
+        cardEl.dataset.index = originalIndex;
 
         // Selection State
-        if (selectedCardIndices.has(index)) {
+        if (selectedCardIndices.has(originalIndex)) {
             cardEl.classList.add('selected');
         } else {
             cardEl.classList.remove('selected');
@@ -1002,7 +1230,7 @@ function updatePlayerHand(hand, topCard, currentColor, isMyTurn, drawStack) {
         }
 
         // Reorder/Insert
-        const currentChild = playerHand.children[index];
+        const currentChild = playerHand.children[displayIndex];
         if (currentChild !== cardEl) {
             if (currentChild) {
                 playerHand.insertBefore(cardEl, currentChild);
@@ -1082,12 +1310,53 @@ function updatePlayerHand(hand, topCard, currentColor, isMyTurn, drawStack) {
 // Event Delegation for Player Hand (Run once on init)
 // We need to ensure we don't add this multiple times.
 if (!playerHand.hasAttribute('data-listener-attached')) {
+    playerHand.addEventListener('pointerdown', (e) => {
+        const cardEl = e.target.closest('.hand-card');
+        if (!cardEl || e.button > 0) return;
+
+        const cardId = parseInt(cardEl.dataset.cardId, 10);
+        if (!Number.isInteger(cardId)) return;
+
+        clearHandDragState();
+
+        handDragState = {
+            cardId,
+            pointerId: e.pointerId,
+            startX: e.clientX,
+            startY: e.clientY,
+            pointerX: e.clientX,
+            pointerY: e.clientY,
+            active: false,
+            holdTimer: window.setTimeout(beginHandCardReorder, HAND_DRAG_HOLD_MS)
+        };
+
+        cardEl.setPointerCapture?.(e.pointerId);
+    });
+
+    playerHand.addEventListener('pointermove', handleHandPointerMove);
+
+    playerHand.addEventListener('pointerup', (e) => {
+        if (!handDragState || handDragState.pointerId !== e.pointerId) return;
+        clearHandDragState({ suppressClick: handDragState.active });
+    });
+
+    playerHand.addEventListener('pointercancel', (e) => {
+        if (!handDragState || handDragState.pointerId !== e.pointerId) return;
+        clearHandDragState({ suppressClick: handDragState.active });
+    });
+
     playerHand.addEventListener('click', (e) => {
+        if (suppressNextCardClick) {
+            e.preventDefault();
+            suppressNextCardClick = false;
+            return;
+        }
+
         const cardEl = e.target.closest('.hand-card');
         if (!cardEl) return;
 
-        const index = parseInt(cardEl.dataset.index);
-        const cardId = parseInt(cardEl.dataset.cardId);
+        const index = parseInt(cardEl.dataset.index, 10);
+        const cardId = parseInt(cardEl.dataset.cardId, 10);
 
         // Find the card in current state
         const hand = game.state.hand;
@@ -1156,8 +1425,10 @@ function updateHandVisuals() {
         matchingAgainstSelection = true;
     }
 
-    cardElements.forEach((cardEl, index) => {
+    cardElements.forEach((cardEl) => {
+        const index = parseInt(cardEl.dataset.index, 10);
         const card = hand[index];
+        if (!card) return;
         let isPlayable = false;
 
         if (selectedCardIndices.has(index)) {

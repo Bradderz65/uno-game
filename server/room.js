@@ -649,8 +649,28 @@ export class GameRoom {
             return;
         }
         const currentPlayer = this.players[this.currentPlayerIndex];
-        if (!currentPlayer || !currentPlayer.isBot || this.isActionLocked() || this.winner) {
+        if (!currentPlayer || !currentPlayer.isBot || this.winner) {
             this.clearPendingBotTurn();
+            return;
+        }
+
+        if (this.isActionLocked()) {
+            if (this.pendingBotTurn && this.pendingBotTurn.playerId === currentPlayer.id) {
+                return;
+            }
+
+            this.clearPendingBotTurn();
+            const delay = this.isDealing
+                ? 300
+                : Math.max(80, this.actionLockedUntil - Date.now() + 80);
+
+            this.pendingBotTurn = {
+                playerId: currentPlayer.id,
+                timerId: setTimeout(() => {
+                    this.pendingBotTurn = null;
+                    this.maybeHandleBotTurn();
+                }, delay)
+            };
             return;
         }
 
@@ -676,7 +696,11 @@ export class GameRoom {
         }
 
         const bot = this.players[playerIndex];
-        if (!bot.isBot || this.isActionLocked() || this.winner) return;
+        if (!bot.isBot || this.winner) return;
+        if (this.isActionLocked()) {
+            this.maybeHandleBotTurn();
+            return;
+        }
 
         const topCard = this.discardPile[this.discardPile.length - 1];
         let playableGroups = this.getBotPlayableGroups(bot.hand, topCard, this.currentColor, this.drawStack);
@@ -1036,6 +1060,7 @@ export class GameRoom {
                 direction: this.direction,
                 currentColor: this.currentColor,
                 topCard,
+                discardHistory: this.discardPile.slice(-3),
                 drawStack: this.drawStack,
                 deckCount: this.deck.length,
                 hand: player.hand,
