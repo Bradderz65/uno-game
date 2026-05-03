@@ -2011,10 +2011,10 @@ input:checked + .slider:before {
   background: var(--bg-card);
   border-radius: 12px;
   display: grid;
-  grid-template-columns: auto minmax(64px, 88px);
+  grid-template-columns: minmax(0, 1fr) 148px;
   align-items: center;
-  justify-content: center;
-  gap: 0.65rem 1rem;
+  justify-content: stretch;
+  gap: 0.65rem 0.8rem;
   animation: slideIn 0.3s ease;
 }
 
@@ -2033,11 +2033,14 @@ input:checked + .slider:before {
 }
 
 .game-settings .number-input {
-  justify-self: center;
+  width: 148px;
+  justify-self: end;
+  gap: 0.35rem;
 }
 
 .game-settings .number-input input {
-  width: 52px;
+  width: 42px;
+  min-width: 0;
 }
 
 .custom-card-toggle {
@@ -2055,10 +2058,10 @@ input:checked + .slider:before {
 .custom-card-settings {
   grid-column: 1 / -1;
   display: none;
-  grid-template-columns: auto minmax(64px, 88px);
+  grid-template-columns: minmax(0, 1fr) 148px;
   align-items: center;
-  justify-content: center;
-  gap: 0.65rem 1rem;
+  justify-content: stretch;
+  gap: 0.65rem 0.8rem;
   padding-top: 0.65rem;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
