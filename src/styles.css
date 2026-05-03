@@ -3187,3 +3187,33 @@ body.is-reordering-hand {
     font-size: 1.65rem;
   }
 }
+
+/* Final hand layout guard: keep legacy hand header/toolbar rules from resurfacing. */
+#game-screen .player-hand-area::before {
+  content: none !important;
+  display: none !important;
+}
+
+#game-screen .player-hand-area {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+#game-screen .hand-container {
+  order: 1;
+  margin-top: 0 !important;
+}
+
+#game-screen .hand-controls-row {
+  order: 2;
+}
+
+#game-screen .action-buttons {
+  order: 3;
+}
+
+#game-screen .hand-toolbar {
+  position: static !important;
+  width: auto;
+}
