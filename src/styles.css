@@ -2030,9 +2030,9 @@ input:checked + .slider:before {
 
 .setting-control-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 0.35rem;
   width: 100%;
 }
 
@@ -2042,14 +2042,21 @@ input:checked + .slider:before {
 }
 
 .game-settings .number-input {
-  width: 148px;
-  justify-self: end;
+  width: 100%;
+  justify-self: stretch;
+  justify-content: space-between;
   gap: 0.35rem;
 }
 
 .game-settings .number-input input {
-  width: 42px;
-  min-width: 0;
+  flex: 1;
+  width: auto;
+  min-width: 48px;
+  max-width: 72px;
+}
+
+.game-settings .btn-number {
+  flex: 0 0 32px;
 }
 
 .custom-card-toggle {
