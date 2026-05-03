@@ -152,6 +152,7 @@ let handDragState = null;
 let suppressNextCardClick = false;
 const AUTO_SORT_KEY = 'uno_auto_sort_hand';
 const HAND_DRAG_HOLD_MS = 230;
+const TOUCH_HAND_DRAG_HOLD_MS = 550;
 const HAND_DRAG_CANCEL_DISTANCE = 10;
 
 // UI Elements for Multi Select
@@ -1454,6 +1455,10 @@ if (!playerHand.hasAttribute('data-listener-attached')) {
 
         clearHandDragState();
 
+        const holdDelay = e.pointerType === 'touch' || e.pointerType === 'pen'
+            ? TOUCH_HAND_DRAG_HOLD_MS
+            : HAND_DRAG_HOLD_MS;
+
         handDragState = {
             cardId,
             pointerId: e.pointerId,
@@ -1462,7 +1467,7 @@ if (!playerHand.hasAttribute('data-listener-attached')) {
             pointerX: e.clientX,
             pointerY: e.clientY,
             active: false,
-            holdTimer: window.setTimeout(beginHandCardReorder, HAND_DRAG_HOLD_MS)
+            holdTimer: window.setTimeout(beginHandCardReorder, holdDelay)
         };
 
         cardEl.setPointerCapture?.(e.pointerId);
