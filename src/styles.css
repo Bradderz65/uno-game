@@ -2761,6 +2761,20 @@ body.is-reordering-hand {
   letter-spacing: 0;
 }
 
+.card.skip .card-value,
+.card.reverse .card-value {
+  font-family: 'Arial Black', Arial, sans-serif;
+  font-style: italic;
+}
+
+.card.skip .corner-tl,
+.card.skip .corner-br,
+.card.reverse .corner-tl,
+.card.reverse .corner-br {
+  font-family: 'Arial Black', Arial, sans-serif;
+  font-style: italic;
+}
+
 .card .corner-tl,
 .card .corner-br {
   font-size: 0.65rem;
