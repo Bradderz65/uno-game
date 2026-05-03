@@ -2767,6 +2767,62 @@ body.is-reordering-hand {
   font-style: normal;
 }
 
+@media (min-width: 701px) {
+  .card.skip .card-value {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    color: transparent;
+    text-shadow: none;
+  }
+
+  .card.skip .card-value::before,
+  .card.skip .card-value::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: block;
+    color: inherit;
+  }
+
+  .card.skip.red .card-value::before,
+  .card.skip.red .card-value::after {
+    color: #ED1C24;
+  }
+
+  .card.skip.yellow .card-value::before,
+  .card.skip.yellow .card-value::after {
+    color: #FFDE00;
+  }
+
+  .card.skip.green .card-value::before,
+  .card.skip.green .card-value::after {
+    color: #00A651;
+  }
+
+  .card.skip.blue .card-value::before,
+  .card.skip.blue .card-value::after {
+    color: #0072BC;
+  }
+
+  .card.skip .card-value::before {
+    width: 0.86em;
+    height: 0.86em;
+    border: 0.12em solid currentColor;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+  }
+
+  .card.skip .card-value::after {
+    width: 0.13em;
+    height: 0.96em;
+    border-radius: 999px;
+    background: currentColor;
+    transform: translate(-50%, -50%) rotate(42deg);
+  }
+}
+
 .card.playable {
   outline: 2px solid rgba(216, 196, 139, 0.52);
   outline-offset: 2px;
