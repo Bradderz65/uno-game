@@ -60,13 +60,33 @@
             <span id="display-room-code" class="room-code">----</span>
           </div>
 
-          <div class="players-list" id="players-list">
-            <!-- Players will be inserted here -->
+          <div class="invite-card" aria-label="Network invite">
+            <div id="invite-qr" class="invite-qr" aria-live="polite"></div>
+            <div class="invite-link-row">
+              <input type="text" id="invite-url" readonly aria-label="Invite link">
+              <button id="copy-invite-btn" class="btn btn-secondary" type="button">Copy</button>
+            </div>
+          </div>
+
+          <div class="connected-players-section">
+            <div class="section-header">
+              <span class="section-title">Connected Players</span>
+              <span class="player-count" id="player-count">0/10</span>
+            </div>
+            <div class="players-list" id="players-list">
+              <!-- Players will be inserted here -->
+            </div>
           </div>
 
           <div id="game-settings" class="game-settings hidden">
-             <label for="starting-cards">Starting Cards:</label>
-             <input type="number" id="starting-cards" value="7" min="1" max="20">
+             <div class="setting-control-row">
+               <label for="starting-cards">Starting Cards</label>
+               <div class="number-input starting-cards-control">
+                 <button id="dec-cards" class="btn-number" type="button" aria-label="Decrease starting cards">-</button>
+                 <input type="number" id="starting-cards" value="7" min="1" max="20">
+                 <button id="inc-cards" class="btn-number" type="button" aria-label="Increase starting cards">+</button>
+               </div>
+             </div>
 
              <label class="custom-card-toggle" for="custom-card-enabled">
                <input type="checkbox" id="custom-card-enabled">
@@ -74,10 +94,22 @@
              </label>
 
              <div class="custom-card-settings" id="custom-card-settings">
-               <label for="custom-card-draw">Draw Amount:</label>
-               <input type="number" id="custom-card-draw" value="8" min="1" max="20">
-               <label for="custom-card-count">Cards in Deck:</label>
-               <input type="number" id="custom-card-count" value="2" min="1" max="8">
+               <div class="setting-control-row">
+                 <label for="custom-card-draw">Draw Amount</label>
+                 <div class="number-input">
+                   <button id="dec-custom-draw" class="btn-number" type="button" aria-label="Decrease custom draw amount">-</button>
+                   <input type="number" id="custom-card-draw" value="8" min="1" max="20">
+                   <button id="inc-custom-draw" class="btn-number" type="button" aria-label="Increase custom draw amount">+</button>
+                 </div>
+               </div>
+               <div class="setting-control-row">
+                 <label for="custom-card-count">Cards in Deck</label>
+                 <div class="number-input">
+                   <button id="dec-custom-count" class="btn-number" type="button" aria-label="Decrease custom cards in deck">-</button>
+                   <input type="number" id="custom-card-count" value="2" min="1" max="8">
+                   <button id="inc-custom-count" class="btn-number" type="button" aria-label="Increase custom cards in deck">+</button>
+                 </div>
+               </div>
              </div>
           </div>
 
@@ -141,18 +173,19 @@
 
         <!-- Player Hand -->
         <div class="player-hand-area">
-          <div class="hand-toolbar" aria-label="Hand controls">
-            <label class="auto-sort-toggle" for="auto-sort-toggle" title="Automatically keep your hand sorted">
-              <input type="checkbox" id="auto-sort-toggle">
-              Auto
-            </label>
-          </div>
-
           <div class="hand-container" id="player-hand">
             <!-- Player's cards will be inserted here -->
           </div>
 
-          <div class="turn-action-status" id="turn-action-status" aria-live="polite">Waiting for turn</div>
+          <div class="hand-controls-row">
+            <div class="turn-action-status" id="turn-action-status" aria-live="polite">Waiting for turn</div>
+            <div class="hand-toolbar" aria-label="Hand controls">
+              <label class="auto-sort-toggle" for="auto-sort-toggle" title="Automatically keep your hand grouped">
+                <input type="checkbox" id="auto-sort-toggle">
+                Auto
+              </label>
+            </div>
+          </div>
 
           <div class="action-buttons">
             <button class="btn btn-action" id="draw-btn" data-action="draw">

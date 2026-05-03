@@ -27,6 +27,11 @@ app.get('/', (req, res) => {
     res.sendFile(join(__dirname, '..', 'index.html'));
 });
 
+app.get('/api/network-url', (req, res) => {
+    const protocol = req.protocol;
+    res.json({ url: `${protocol}://${localIP}:${PORT}/` });
+});
+
 // Game rooms storage - Load from disk on startup
 const rooms = StateManager.load(io);
 

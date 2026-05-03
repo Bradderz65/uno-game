@@ -1,5 +1,6 @@
 import { GameClient } from './game-client.js';
 import { areCardsCompatible, isLegalPlayableCard } from './game-rules.js';
+import { createQrSvg } from './qr-code.js';
 import { sounds } from './sounds.js';
 
 ;(async () => {
@@ -83,6 +84,9 @@ const refreshRoomsBtn = document.getElementById('refresh-rooms-btn');
 const startBtn = document.getElementById('start-btn');
 const addBotBtn = document.getElementById('add-bot-btn');
 const displayRoomCode = document.getElementById('display-room-code');
+const inviteQr = document.getElementById('invite-qr');
+const inviteUrlInput = document.getElementById('invite-url');
+const copyInviteBtn = document.getElementById('copy-invite-btn');
 const playersList = document.getElementById('players-list');
 const waitingText = document.getElementById('waiting-text');
 const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
@@ -158,6 +162,11 @@ const selectedCountSpan = document.getElementById('selected-count');
 const SESSION_ROOM_KEY = 'uno_room_code';
 const SESSION_NAME_KEY = 'uno_player_name';
 const SESSION_ID_KEY = 'uno_player_id';
+
+const roomParam = new URLSearchParams(window.location.search).get('room');
+if (roomParam) {
+    roomCodeInput.value = roomParam.trim().toUpperCase().slice(0, 4);
+}
 
 if (autoSortToggle) {
     autoSortToggle.checked = localStorage.getItem(AUTO_SORT_KEY) === 'true';
@@ -337,9 +346,12 @@ function refreshRoomsList() {
                     <span class="room-code-display">${room.code}</span>
                     <span class="host-name">Host: ${escapeHtml(room.hostName)}</span>
                 </div>
-                <span class="player-count">${room.playerCount}/${room.maxPlayers} 👥</span>
+                <div class="room-actions">
+                    <span class="player-count">${room.playerCount}/${room.maxPlayers} players</span>
+                    <button class="room-join-btn" type="button" aria-label="Join room ${room.code}">Join</button>
+                </div>
             `;
-            roomEl.addEventListener('click', () => {
+            roomEl.querySelector('.room-join-btn').addEventListener('click', () => {
                 joinRoomByCode(room.code);
             });
             roomsList.appendChild(roomEl);
@@ -463,18 +475,42 @@ document.getElementById('copy-code-btn')?.addEventListener('click', () => {
     });
 });
 
-// Starting cards +/- buttons
-document.getElementById('dec-cards')?.addEventListener('click', () => {
-    const input = document.getElementById('starting-cards');
-    const val = parseInt(input.value) || 7;
-    if (val > 1) input.value = val - 1;
+copyInviteBtn?.addEventListener('click', async () => {
+    if (!inviteUrlInput?.value) return;
+
+    try {
+        await navigator.clipboard.writeText(inviteUrlInput.value);
+        copyInviteBtn.classList.add('copied');
+        copyInviteBtn.textContent = 'Copied';
+        setTimeout(() => {
+            copyInviteBtn.classList.remove('copied');
+            copyInviteBtn.textContent = 'Copy';
+        }, 1600);
+    } catch {
+        inviteUrlInput.select();
+        showToast('Invite link selected', 'info');
+    }
 });
 
-document.getElementById('inc-cards')?.addEventListener('click', () => {
-    const input = document.getElementById('starting-cards');
-    const val = parseInt(input.value) || 7;
-    if (val < 20) input.value = val + 1;
-});
+function stepNumberInput(inputId, delta, fallbackValue) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const min = Number(input.min || Number.NEGATIVE_INFINITY);
+    const max = Number(input.max || Number.POSITIVE_INFINITY);
+    const currentValue = Number.parseInt(input.value, 10);
+    const nextValue = (Number.isFinite(currentValue) ? currentValue : fallbackValue) + delta;
+    input.value = Math.max(min, Math.min(max, nextValue));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// Number steppers
+document.getElementById('dec-cards')?.addEventListener('click', () => stepNumberInput('starting-cards', -1, 7));
+document.getElementById('inc-cards')?.addEventListener('click', () => stepNumberInput('starting-cards', 1, 7));
+document.getElementById('dec-custom-draw')?.addEventListener('click', () => stepNumberInput('custom-card-draw', -1, 8));
+document.getElementById('inc-custom-draw')?.addEventListener('click', () => stepNumberInput('custom-card-draw', 1, 8));
+document.getElementById('dec-custom-count')?.addEventListener('click', () => stepNumberInput('custom-card-count', -1, 2));
+document.getElementById('inc-custom-count')?.addEventListener('click', () => stepNumberInput('custom-card-count', 1, 2));
 
 // Leave room function
 function leaveRoom() {
@@ -771,6 +807,39 @@ function showWaitingSection() {
     joinSection.classList.add('hidden');
     waitingSection.classList.remove('hidden');
     displayRoomCode.textContent = currentRoomCode;
+    updateInviteQr();
+}
+
+async function updateInviteQr() {
+    if (!currentRoomCode || !inviteQr || !inviteUrlInput) return;
+
+    const inviteUrl = await getInviteUrl(currentRoomCode);
+    inviteUrlInput.value = inviteUrl;
+
+    try {
+        inviteQr.innerHTML = createQrSvg(inviteUrl);
+    } catch (err) {
+        console.error(err);
+        inviteQr.textContent = 'QR unavailable';
+    }
+}
+
+async function getInviteUrl(roomCode) {
+    const fallback = new URL(window.location.href);
+    fallback.search = '';
+    fallback.searchParams.set('room', roomCode);
+
+    try {
+        const response = await fetch(`${socketOrigin}/api/network-url`);
+        if (!response.ok) throw new Error(`Network URL request failed: ${response.status}`);
+        const { url } = await response.json();
+        const networkUrl = new URL(url);
+        networkUrl.searchParams.set('room', roomCode);
+        return networkUrl.toString();
+    } catch (err) {
+        console.warn('Using current browser URL for invite QR.', err);
+        return fallback.toString();
+    }
 }
 
 function updateLobbyUIForHost() {
@@ -1056,20 +1125,25 @@ function getCardSortRank(card) {
         wild: 4
     };
 
-    const typeRank = {
-        number: 0,
-        skip: 1,
-        reverse: 2,
-        draw_two: 3,
-        wild: 4,
-        wild_draw_four: 5,
-        custom_draw: 6
+    const actionRank = {
+        skip: 10,
+        reverse: 11,
+        draw_two: 12,
+        wild_draw_four: 13,
+        custom_draw: 14,
+        wild: 15
     };
 
+    const group =
+        card.type === 'number'
+            ? Number(card.value)
+            : actionRank[card.type] ?? 99;
+
     return {
+        group,
         color: colorRank[card.color] ?? 9,
-        type: typeRank[card.type] ?? 9,
-        value: card.type === 'number' ? Number(card.value) : Number(card.drawAmount || 0)
+        drawAmount: Number(card.drawAmount || String(card.value || '').replace('+', '') || 0),
+        id: card.id ?? 0
     };
 }
 
@@ -1077,9 +1151,10 @@ function compareCardsForHandSort(a, b) {
     const aRank = getCardSortRank(a.card);
     const bRank = getCardSortRank(b.card);
 
+    if (aRank.group !== bRank.group) return aRank.group - bRank.group;
+    if (aRank.drawAmount !== bRank.drawAmount) return aRank.drawAmount - bRank.drawAmount;
     if (aRank.color !== bRank.color) return aRank.color - bRank.color;
-    if (aRank.type !== bRank.type) return aRank.type - bRank.type;
-    if (aRank.value !== bRank.value) return aRank.value - bRank.value;
+    if (aRank.id !== bRank.id) return aRank.id - bRank.id;
     return a.originalIndex - b.originalIndex;
 }
 
@@ -1953,6 +2028,10 @@ playerNameInput.focus();
 // Handle Enter key in inputs
 playerNameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
+        if (roomParam && roomCodeInput.value.trim()) {
+            joinBtn.click();
+            return;
+        }
         roomCodeInput.focus();
     }
 });
