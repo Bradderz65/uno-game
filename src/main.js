@@ -151,6 +151,8 @@ let manualSortedCardIds = [];
 let handDragState = null;
 let suppressNextCardClick = false;
 const AUTO_SORT_KEY = 'uno_auto_sort_hand';
+const DISPLAY_NAME_KEY = 'uno_display_name';
+const SOUND_KEY = 'uno_sound_enabled';
 const HAND_DRAG_HOLD_MS = 230;
 const TOUCH_HAND_DRAG_HOLD_MS = 550;
 const HAND_DRAG_CANCEL_DISTANCE = 10;
@@ -171,6 +173,24 @@ if (roomParam) {
 
 if (autoSortToggle) {
     autoSortToggle.checked = localStorage.getItem(AUTO_SORT_KEY) === 'true';
+}
+
+const rememberedName = localStorage.getItem(DISPLAY_NAME_KEY) || sessionStorage.getItem(SESSION_NAME_KEY);
+if (rememberedName && !playerNameInput.value) {
+    playerNameInput.value = rememberedName;
+}
+
+function rememberDisplayName(name) {
+    if (!name) return;
+    localStorage.setItem(DISPLAY_NAME_KEY, name);
+}
+
+if (localStorage.getItem(SOUND_KEY) === 'false') {
+    sounds.enabled = false;
+    if (soundToggle) {
+        soundToggle.textContent = 'Muted';
+        soundToggle.title = 'Sound Off';
+    }
 }
 
 // Play Selected Button
@@ -216,10 +236,13 @@ playBtn.addEventListener('click', () => {
 });
 
 function updateMultiPlayUI() {
-    selectedCountSpan.textContent = selectedCardIndices.size;
+    const count = selectedCardIndices.size;
+    selectedCountSpan.textContent = count;
+    playBtn.classList.toggle('has-selection', count > 0);
     const isMyTurn = game.state?.currentPlayerId === myPlayerId;
+    const locked = Boolean(game.state?.actionsLocked || game.state?.isDealing);
 
-    if (selectedCardIndices.size > 0 && isMyTurn) {
+    if (count > 0 && isMyTurn && !locked) {
         playBtn.classList.remove('disabled');
         playBtn.disabled = false;
     } else {
@@ -308,6 +331,9 @@ createBtn.addEventListener('click', () => {
         return;
     }
 
+    rememberDisplayName(name);
+    createBtn.disabled = true;
+
     socket.emit('createRoom', name, (response) => {
         if (response.success) {
             myPlayerId = response.playerId;
@@ -320,6 +346,7 @@ createBtn.addEventListener('click', () => {
             // Manually update UI for host since we know we're the host
             updateLobbyUIForHost();
         } else {
+            createBtn.disabled = false;
             showToast(response.error, 'error');
         }
     });
@@ -331,13 +358,13 @@ refreshRoomsBtn.addEventListener('click', () => {
 
 function refreshRoomsList() {
     socket.emit('getRooms', (rooms) => {
-        if (rooms.length === 0) {
-            roomsBrowser.classList.add('hidden');
-            return;
-        }
-
         roomsBrowser.classList.remove('hidden');
         roomsList.innerHTML = '';
+
+        if (!rooms.length) {
+            roomsList.innerHTML = '<div class="no-rooms">No open games yet. Create one to host.</div>';
+            return;
+        }
 
         rooms.forEach(room => {
             const roomEl = document.createElement('div');
@@ -402,6 +429,8 @@ function joinRoomByCode(code) {
         return;
     }
 
+    rememberDisplayName(name);
+
     socket.emit('joinRoom', { roomCode: code, playerName: name }, (response) => {
         if (response.success) {
             myPlayerId = response.playerId;
@@ -418,33 +447,13 @@ function joinRoomByCode(code) {
 }
 
 joinBtn.addEventListener('click', () => {
-    const name = playerNameInput.value.trim();
     const code = roomCodeInput.value.trim().toUpperCase();
-
-    if (!name) {
-        showToast('Please enter your name', 'error');
-        playerNameInput.focus();
-        return;
-    }
     if (!code || code.length !== 4) {
         showToast('Please enter a valid room code', 'error');
         roomCodeInput.focus();
         return;
     }
-
-    socket.emit('joinRoom', { roomCode: code, playerName: name }, (response) => {
-        if (response.success) {
-            myPlayerId = response.playerId;
-            game.setPlayerId(myPlayerId);
-            currentRoomCode = response.roomCode;
-            playerName = name;
-            isHost = false;
-            saveSession();
-            showWaitingSection();
-        } else {
-            showToast(response.error, 'error');
-        }
-    });
+    joinRoomByCode(code);
 });
 
 startBtn.addEventListener('click', () => {
@@ -565,6 +574,22 @@ unoBtn.addEventListener('click', () => {
     }
 });
 
+function cancelColorPick() {
+    if (colorModal.classList.contains('hidden')) return;
+    pendingWildCard = null;
+    pendingMultiPlay = false;
+    colorModal.classList.add('hidden');
+}
+
+colorModal.addEventListener('click', (e) => {
+    if (e.target === colorModal) cancelColorPick();
+});
+document.getElementById('color-cancel-btn')?.addEventListener('click', cancelColorPick);
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cancelColorPick();
+});
+
 // Color picker
 colorButtons.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -628,6 +653,7 @@ rematchNoBtn?.addEventListener('click', () => {
 // Sound toggle
 soundToggle?.addEventListener('click', () => {
     const enabled = sounds.toggle();
+    localStorage.setItem(SOUND_KEY, String(enabled));
     soundToggle.textContent = enabled ? 'Sound' : 'Muted';
     soundToggle.title = enabled ? 'Sound On' : 'Sound Off';
 });
@@ -741,6 +767,15 @@ socket.on('unoForgotten', (data) => {
 socket.on('playRejected', (data) => {
     showToast(data.reason, 'error');
     sounds.error();
+    if (pendingPlayAnimation?.cardIds && game.state?.hand) {
+        selectedCardIndices.clear();
+        pendingPlayAnimation.cardIds.forEach(id => {
+            const index = game.state.hand.findIndex(card => card.id === id);
+            if (index >= 0) selectedCardIndices.add(index);
+        });
+        updatePlayerHand(game.state.hand, game.state.topCard, game.state.currentColor, game.isMyTurn, game.state.drawStack);
+        updateMultiPlayUI();
+    }
     pendingPlayAnimation = null;
 });
 
@@ -849,6 +884,7 @@ function updateLobbyUIForHost() {
     if (!isHost) return;
     
     startBtn.classList.remove('hidden');
+    startBtn.disabled = true;
     if (addBotBtn) {
         addBotBtn.classList.remove('hidden');
         addBotBtn.disabled = false;
@@ -856,6 +892,7 @@ function updateLobbyUIForHost() {
     }
     gameSettings.classList.remove('hidden');
     waitingText.classList.remove('hidden');
+    waitingText.textContent = 'Add a player or bot to start';
 }
 
 function updateLobbyUI(state) {
@@ -926,12 +963,18 @@ function updateLobbyUI(state) {
             addBotBtn.title = isFull ? 'Room is full' : '';
         }
         gameSettings.classList.remove('hidden');
-        waitingText.classList.toggle('hidden', state.players.length >= 2);
+        if (canStart) {
+            waitingText.classList.add('hidden');
+        } else {
+            waitingText.classList.remove('hidden');
+            waitingText.textContent = 'Add a player or bot to start';
+        }
     } else {
         startBtn.classList.add('hidden');
         addBotBtn?.classList.add('hidden');
         gameSettings.classList.add('hidden');
         waitingText.classList.remove('hidden');
+        waitingText.textContent = 'Waiting for host to start...';
     }
 }
 
@@ -975,6 +1018,19 @@ function updateGameUI(state) {
         catchPanel.classList.add('hidden');
     }
 
+    if (state.isDealing) {
+        document.body.classList.remove('my-turn');
+        setTurnActionState({
+            action: 'draw',
+            disabled: true,
+            label: 'Draw',
+            title: '',
+            status: 'Dealing cards...'
+        });
+        updateMultiPlayUI();
+        return;
+    }
+
     // Highlight if it's my turn
     if (state.currentPlayerId === myPlayerId) {
         document.body.classList.add('my-turn');
@@ -983,11 +1039,12 @@ function updateGameUI(state) {
         // 1. Player has playable cards (and no stack)
         // 2. Player has already drawn this turn
         const hasPlayableCard = state.hand.some(card => isLegalPlayableCard(card, state.hand.length, state.topCard, state.currentColor, state.drawStack));
+        const locked = Boolean(state.actionsLocked);
 
         if (state.hasDrawnThisTurn && !hasPlayableCard) {
             setTurnActionState({
                 action: 'pass',
-                disabled: false,
+                disabled: locked,
                 label: 'Pass',
                 title: 'End your turn.',
                 status: 'No playable cards. Pass to end your turn.'
@@ -1012,7 +1069,7 @@ function updateGameUI(state) {
             const hasStack = state.drawStack > 0;
             setTurnActionState({
                 action: 'draw',
-                disabled: false,
+                disabled: locked || false,
                 label: hasStack ? `Draw ${state.drawStack}` : 'Draw',
                 title: hasStack ? `Draw ${state.drawStack} cards.` : 'Draw a card.',
                 status: hasStack ? `Stack is +${state.drawStack}. Play a plus card or draw.` : 'No playable cards. Draw one card.'
@@ -1056,13 +1113,6 @@ function updateDiscardPile(topCard, currentColor, discardHistory = []) {
 
         cardEl.classList.add(isTopCard ? 'discard-top-card' : 'discard-history-card');
         cardEl.dataset.discardDepth = depth;
-
-        if (depth === 1) {
-            const label = document.createElement('span');
-            label.className = 'discard-history-label';
-            label.textContent = 'Last';
-            cardEl.appendChild(label);
-        }
 
         if (isTopCard && isWildCard(card) && currentColor && currentColor !== 'wild') {
             applyChosenColorIndicator(cardEl, currentColor);
@@ -2037,7 +2087,7 @@ playerNameInput.addEventListener('keypress', (e) => {
             joinBtn.click();
             return;
         }
-        roomCodeInput.focus();
+        createBtn.click();
     }
 });
 

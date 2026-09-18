@@ -3888,6 +3888,18 @@ body.is-reordering-hand {
   transform: translateY(-1px);
 }
 
+#waiting-section #start-btn:disabled,
+#waiting-section #start-btn.disabled {
+  opacity: 0.42;
+  filter: grayscale(0.55);
+  box-shadow: none;
+  transform: none;
+}
+
+#play-btn:not(.has-selection) .play-count {
+  display: none;
+}
+
 #waiting-section #leave-lobby-btn {
   background: transparent;
   color: rgba(245, 228, 173, 0.6);
@@ -3922,14 +3934,19 @@ body.is-reordering-hand {
 
 /* -- Desktop layout: 2-column grid replaces column-count -- */
 @media (min-width: 900px) {
+  #waiting-section {
+    column-count: 1;
+  }
+
   #waiting-section.lobby-section {
-    column-count: auto;
+    column-count: 1;
     column-gap: 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 0.85rem;
     align-items: start;
     padding: 1.1rem;
+    overflow: visible;
   }
 
   #waiting-section > * {
@@ -3942,9 +3959,14 @@ body.is-reordering-hand {
   /* Full-width rows */
   #waiting-section .room-info,
   #waiting-section #game-settings,
+  #waiting-section #game-settings.game-settings,
   #waiting-section .waiting-text,
   #waiting-section #leave-lobby-btn {
     grid-column: 1 / -1;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    justify-self: stretch;
   }
 
   /* Side-by-side rows */
@@ -4293,4 +4315,128 @@ body.is-reordering-hand {
 #game-screen .hand-toolbar {
   position: static !important;
   width: auto;
+}
+
+/* Needed UI fixes — keep the current table look */
+.name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+  width: 100%;
+}
+
+.name-field-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #d8c48b;
+  padding-left: 0.1rem;
+}
+
+#waiting-section #game-settings.game-settings {
+  animation: none;
+  transform: none;
+  width: 100%;
+  min-width: 0;
+}
+
+#game-screen #discard-pile .discard-history-card,
+#game-screen #discard-pile .discard-history-card[data-discard-depth="1"],
+#game-screen #discard-pile .discard-history-card[data-discard-depth="2"] {
+  inset: 0;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  pointer-events: none;
+  filter: none;
+  outline: none;
+  opacity: 1;
+  box-shadow:
+    0 8px 14px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.16);
+}
+
+#game-screen #discard-pile .discard-history-card[data-discard-depth="1"] {
+  transform: rotate(-5deg);
+  z-index: 3;
+}
+
+#game-screen #discard-pile .discard-history-card[data-discard-depth="2"] {
+  transform: rotate(4deg);
+  z-index: 2;
+}
+
+#game-screen #discard-pile .discard-history-card .card-value {
+  font-size: 2.05rem;
+}
+
+#game-screen #discard-pile .discard-history-card .corner-tl,
+#game-screen #discard-pile .discard-history-card .corner-br {
+  display: block;
+}
+
+.discard-history-label {
+  display: none !important;
+}
+
+.card.yellow .card-value,
+.card.yellow .corner-tl,
+.card.yellow .corner-br {
+  color: #c9a000;
+}
+
+.color-btn {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+.color-btn::after {
+  content: attr(data-color);
+  text-transform: capitalize;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+.color-btn.yellow::after {
+  color: #21160b;
+  text-shadow: none;
+}
+
+#color-cancel-btn {
+  margin-top: 1rem;
+  width: 100%;
+}
+
+#game-screen.active ~ .toast-container {
+  top: 4.75rem;
+}
+
+@media (max-width: 700px) {
+  .auto-sort-toggle {
+    min-height: 32px;
+    padding: 0.3rem 0.6rem;
+  }
+
+  #game-screen.active ~ .toast-container {
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 4.6rem;
+  }
+
+  .toast {
+    max-width: none;
+  }
 }

@@ -22,6 +22,7 @@ export class GameRoom {
         this.customCardConfig = normalizeCustomCardConfig();
         this.startingCardCount = 7;
         this.actionLockedUntil = 0;
+        this.isDealing = false;
     }
 
     addPlayer(socket, name) {
@@ -230,7 +231,11 @@ export class GameRoom {
                 this.nextTurn();
                 break;
             case CARD_TYPES.REVERSE:
-                this.direction *= -1;
+                if (this.players.length === 2) {
+                    this.nextTurn();
+                } else {
+                    this.direction *= -1;
+                }
                 break;
             case CARD_TYPES.DRAW_TWO:
                 this.drawStack = 2;
@@ -643,6 +648,28 @@ export class GameRoom {
         this.pendingBotTurn = null;
     }
 
+    botThinkDelay() {
+        if (this.hasDrawnThisTurn) {
+            return 700 + Math.floor(Math.random() * 800);
+        }
+        return 1500 + Math.floor(Math.random() * 1500);
+    }
+
+    botActDelay() {
+        return 450 + Math.floor(Math.random() * 550);
+    }
+
+    scheduleBotTurn(playerId, delay, action) {
+        this.clearPendingBotTurn();
+        this.pendingBotTurn = {
+            playerId,
+            timerId: setTimeout(() => {
+                this.pendingBotTurn = null;
+                action();
+            }, delay)
+        };
+    }
+
     maybeHandleBotTurn() {
         if (!this.gameStarted) {
             this.clearPendingBotTurn();
@@ -654,39 +681,21 @@ export class GameRoom {
             return;
         }
 
-        if (this.isActionLocked()) {
-            if (this.pendingBotTurn && this.pendingBotTurn.playerId === currentPlayer.id) {
-                return;
-            }
-
-            this.clearPendingBotTurn();
-            const delay = this.isDealing
-                ? 300
-                : Math.max(80, this.actionLockedUntil - Date.now() + 80);
-
-            this.pendingBotTurn = {
-                playerId: currentPlayer.id,
-                timerId: setTimeout(() => {
-                    this.pendingBotTurn = null;
-                    this.maybeHandleBotTurn();
-                }, delay)
-            };
-            return;
-        }
-
         if (this.pendingBotTurn && this.pendingBotTurn.playerId === currentPlayer.id) {
             return;
         }
 
-        this.clearPendingBotTurn();
-        const delay = 600 + Math.floor(Math.random() * 500);
-        this.pendingBotTurn = {
-            playerId: currentPlayer.id,
-            timerId: setTimeout(() => {
-                this.pendingBotTurn = null;
-                this.performBotTurn(currentPlayer.id);
-            }, delay)
-        };
+        if (this.isActionLocked()) {
+            const delay = this.isDealing
+                ? 400
+                : Math.max(120, this.actionLockedUntil - Date.now() + 120);
+            this.scheduleBotTurn(currentPlayer.id, delay, () => this.maybeHandleBotTurn());
+            return;
+        }
+
+        this.scheduleBotTurn(currentPlayer.id, this.botThinkDelay(), () => {
+            this.performBotTurn(currentPlayer.id);
+        });
     }
 
     performBotTurn(botId) {
@@ -720,14 +729,9 @@ export class GameRoom {
             if (playableGroups.length > 0) {
                 const selection = this.chooseBotPlay(bot.hand, playableGroups, topCard, this.currentColor);
                 if (!selection) return;
-                const chosenColor = this.getBotWildColor(bot.hand, selection.indices[0]);
-                if (this.shouldBotCallUno(bot.hand, selection.indices.length)) {
-                    this.callUno(bot.id);
-                }
-                this.playCard(bot.id, selection.indices, chosenColor);
+                this.executeBotPlay(bot, selection);
             } else {
                 this.drawCard(bot.id);
-                this.passTurn(bot.id);
             }
             return;
         }
@@ -743,11 +747,24 @@ export class GameRoom {
 
         const selection = this.chooseBotPlay(bot.hand, playableGroups, topCard, this.currentColor);
         if (!selection) return;
+        this.executeBotPlay(bot, selection);
+    }
+
+    executeBotPlay(bot, selection) {
         const chosenColor = this.getBotWildColor(bot.hand, selection.indices[0]);
+        const play = () => {
+            const stillCurrent = this.players[this.currentPlayerIndex]?.id === bot.id;
+            if (!stillCurrent || this.winner) return;
+            this.playCard(bot.id, selection.indices, chosenColor);
+        };
+
         if (this.shouldBotCallUno(bot.hand, selection.indices.length)) {
+            this.scheduleBotTurn(bot.id, this.botActDelay(), play);
             this.callUno(bot.id);
+            return;
         }
-        this.playCard(bot.id, selection.indices, chosenColor);
+
+        play();
     }
 
     getBotPlayableGroups(hand, topCard, currentColor, drawStack) {
@@ -1073,7 +1090,9 @@ export class GameRoom {
                 })),
                 canCallUno: player.hand.length === 1,
                 hasCalledUno: this.unoCalledBy.has(player.id),
-                playersWithOneCard: []
+                playersWithOneCard: [],
+                isDealing: this.isDealing,
+                actionsLocked: this.isActionLocked()
             };
 
             player.socket.emit('gameState', state);

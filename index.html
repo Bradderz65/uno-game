@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1a1a2e">
   <title>UNO - Multiplayer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23073a2f'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='Arial Black,Arial,sans-serif' font-size='28' font-weight='900' fill='%23f0d177'%3EUNO%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -24,7 +25,10 @@
         <p class="subtitle">Multiplayer Card Game</p>
 
         <div id="join-section" class="lobby-section">
-          <input type="text" id="player-name" placeholder="Your Name" maxlength="12" autocomplete="off">
+          <label class="name-field" for="player-name">
+            <span class="name-field-label">Your name</span>
+            <input type="text" id="player-name" placeholder="Enter your name" maxlength="12" autocomplete="nickname" enterkeyhint="go">
+          </label>
 
           <div class="button-group">
             <button id="create-btn" class="btn btn-primary">
@@ -193,7 +197,7 @@
               <span id="turn-action-label">Draw</span>
             </button>
             <button class="btn btn-primary disabled" id="play-btn" disabled>
-              Play (<span id="selected-count">0</span>)
+              Play<span class="play-count"> (<span id="selected-count">0</span>)</span>
             </button>
             <button class="btn btn-uno hidden" id="uno-btn">
               UNO!
@@ -216,11 +220,12 @@
       <div class="modal-content color-picker">
         <h3>Choose a Color</h3>
         <div class="color-options">
-          <button class="color-btn red" data-color="red"></button>
-          <button class="color-btn yellow" data-color="yellow"></button>
-          <button class="color-btn green" data-color="green"></button>
-          <button class="color-btn blue" data-color="blue"></button>
+          <button class="color-btn red" data-color="red" aria-label="Red"></button>
+          <button class="color-btn yellow" data-color="yellow" aria-label="Yellow"></button>
+          <button class="color-btn green" data-color="green" aria-label="Green"></button>
+          <button class="color-btn blue" data-color="blue" aria-label="Blue"></button>
         </div>
+        <button type="button" class="btn btn-secondary" id="color-cancel-btn">Cancel</button>
       </div>
     </div>
 
