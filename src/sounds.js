@@ -3,21 +3,21 @@
  * No external files needed - generates sounds programmatically
  */
 
+import { prefs } from './lib/storage.js';
+
 class SoundManager {
     constructor() {
         this.audioContext = null;
-        this.enabled = true;
+        this.enabled = prefs.get('sound', true);
         this.volume = 0.5;
         this.init();
     }
 
     init() {
-        // Create audio context on first user interaction
-        document.addEventListener('click', () => {
-            if (!this.audioContext) {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-        }, { once: true });
+        // Browsers only allow audio after a user gesture.
+        const unlock = () => this.ensureContext();
+        document.addEventListener('pointerdown', unlock, { once: true });
+        document.addEventListener('keydown', unlock, { once: true });
     }
 
     ensureContext() {
@@ -206,6 +206,7 @@ class SoundManager {
     // Toggle sound on/off
     toggle() {
         this.enabled = !this.enabled;
+        prefs.set('sound', this.enabled);
         return this.enabled;
     }
 

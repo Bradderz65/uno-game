@@ -6,6 +6,11 @@ echo "   UNO Multiplayer - Starting..."
 echo "========================================"
 echo ""
 
+if [ ! -d node_modules ]; then
+    echo "Installing dependencies..."
+    npm install || exit 1
+fi
+
 # Start the server in background and capture logs
 PORT=${PORT:-3002}
 PORT=$PORT node server/index.js > server.log 2>&1 &

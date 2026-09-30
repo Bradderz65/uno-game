@@ -22,4 +22,4 @@ echo ""
 echo "Copy the URL below and send it to your friend:"
 echo ""
 
-npx localtunnel --port 3000
+npx localtunnel --port "${PORT:-3000}"

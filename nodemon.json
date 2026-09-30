@@ -1,5 +1,5 @@
 {
-  "watch": ["server"],
+  "watch": ["server", "shared"],
   "ext": "js",
-  "ignore": ["server/gamestate.json", "server/*.json"]
+  "ignore": ["server/data/*"]
 }

@@ -1,1160 +1,745 @@
-import { createDeck, shuffleDeck, canPlayCard, areCardsCompatible, isPlusCard, getDrawAmount, normalizeCustomCardConfig, CARD_TYPES, COLORS } from './game.js';
+import { randomBytes } from 'crypto';
+import {
+    COLORS, CARD_TYPES, LIMITS, DEFAULT_SETTINGS,
+    createDeck, shuffle, validatePlay, hasLegalPlay, getDrawAmount,
+    handPoints, isWildCard, normalizeSettings
+} from '../shared/rules.js';
+import { BOT_NAMES, chooseBotPlay } from './bot.js';
 
+export const PHASES = Object.freeze({ LOBBY: 'lobby', PLAYING: 'playing', FINISHED: 'finished' });
+
+export const DEFAULT_TIMING = Object.freeze({
+    dealStartDelay: 900,
+    dealRoundDelay: 170,
+    botThink: [1100, 2100],
+    botAfterDraw: [650, 1200],
+    drawSettle: count => Math.min(1600, 350 + count * 150),
+    disconnectGrace: 45_000
+});
+
+const SAVE_VERSION = 2;
+const LOG_LIMIT = 30;
+
+const randomBetween = ([min, max]) => min + Math.floor(Math.random() * (max - min + 1));
+const newId = () => randomBytes(6).toString('hex');
+const newToken = () => randomBytes(18).toString('base64url');
+
+export function sanitizeName(raw) {
+    return String(raw ?? '')
+        .replace(/[\u0000-\u001f\u007f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, LIMITS.nameLength);
+}
+
+/**
+ * One table. Owns players, the deck and turn order. Sends state to each
+ * player's socket directly, so it has no dependency on the Socket.IO server.
+ */
 export class GameRoom {
-    constructor(roomCode, io) {
-        this.roomCode = roomCode;
-        this.io = io;
+    constructor(code, { timing = DEFAULT_TIMING, onChange = () => {}, onClose = () => {} } = {}) {
+        this.code = code;
+        this.timing = { ...DEFAULT_TIMING, ...timing };
+        this.onChange = onChange;
+        this.onClose = onClose;
+        this.closed = false;
+
         this.players = [];
-        this.bannedPlayerIds = new Set();
-        this.bannedPlayerNames = new Set();
-        this.gameStarted = false;
+        this.hostId = null;
+        this.bannedTokens = new Set();
+        this.settings = normalizeSettings(DEFAULT_SETTINGS);
+        this.phase = PHASES.LOBBY;
+        this.log = [];
+        this.logSeq = 0;
+
+        this.timers = new Set();
+        this.botTimer = null;
+        this.resetGame();
+    }
+
+    resetGame() {
         this.deck = [];
-        this.discardPile = [];
-        this.currentPlayerIndex = 0;
-        this.direction = 1; // 1 = clockwise, -1 = counter-clockwise
+        this.discard = [];
+        this.currentIndex = 0;
+        this.direction = 1;
         this.currentColor = null;
-        this.drawStack = 0; // For stacking +2 and +4
-        this.unoCalledBy = new Set();
-        this.winner = null;
-        this.hasDrawnThisTurn = false;
-        this.pendingBotTurn = null;
-        this.rematchVotes = null;
-        this.customCardConfig = normalizeCustomCardConfig();
-        this.startingCardCount = 7;
-        this.actionLockedUntil = 0;
-        this.isDealing = false;
+        this.drawStack = 0;
+        this.hasDrawn = false;
+        this.dealing = false;
+        this.turnSeq = 0;
+        this.settleUntil = 0;
+        this.results = null;
+        this.rematchReady = new Set();
+        for (const player of this.players) {
+            player.hand = [];
+            player.calledUno = false;
+        }
     }
 
-    addPlayer(socket, name) {
+    // ---------------------------------------------------------------- players
+
+    get humans() {
+        return this.players.filter(p => !p.isBot);
+    }
+
+    get currentPlayer() {
+        return this.phase === PHASES.PLAYING ? this.players[this.currentIndex] : null;
+    }
+
+    getPlayer(id) {
+        return this.players.find(p => p.id === id) ?? null;
+    }
+
+    isHost(id) {
+        return this.hostId === id;
+    }
+
+    uniqueName(name) {
+        const taken = new Set(this.players.map(p => p.name.toLowerCase()));
+        if (!taken.has(name.toLowerCase())) return name;
+        for (let n = 2; ; n++) {
+            const suffix = ` ${n}`;
+            const candidate = name.slice(0, LIMITS.nameLength - suffix.length) + suffix;
+            if (!taken.has(candidate.toLowerCase())) return candidate;
+        }
+    }
+
+    canJoin() {
+        if (this.phase !== PHASES.LOBBY) return 'That game has already started.';
+        if (this.players.length >= LIMITS.maxPlayers) return 'That room is full.';
+        return null;
+    }
+
+    addHuman(rawName, socket) {
+        const name = sanitizeName(rawName);
+        if (!name) return { error: 'Please enter a name.' };
+        const blocked = this.canJoin();
+        if (blocked) return { error: blocked };
+
         const player = {
-            id: socket.id,
+            id: newId(),
+            token: newToken(),
+            name: this.uniqueName(name),
+            isBot: false,
             socket,
-            name,
+            connected: true,
             hand: [],
-            isHost: this.players.length === 0,
-            isBot: false
+            calledUno: false,
+            graceTimer: null
         };
         this.players.push(player);
-        this.broadcastLobbyState();
+        this.hostId ??= player.id;
+        this.record({ type: 'join', playerId: player.id });
+        this.sync();
+        return { player };
     }
 
-    normalizePlayerName(name) {
-        return (name || '').trim().toLowerCase();
-    }
+    addBot(byId) {
+        if (!this.isHost(byId)) return { error: 'Only the host can add bots.' };
+        const blocked = this.canJoin();
+        if (blocked) return { error: blocked };
 
-    isBanned(playerName, playerId) {
-        const normalizedName = this.normalizePlayerName(playerName);
-        if (playerId && this.bannedPlayerIds.has(playerId)) return true;
-        if (normalizedName && this.bannedPlayerNames.has(normalizedName)) return true;
-        return false;
-    }
-
-    kickPlayer(playerId) {
-        const player = this.players.find(p => p.id === playerId);
-        if (!player) return false;
-
-        if (!player.isBot) {
-            this.bannedPlayerIds.add(player.id);
-            this.bannedPlayerNames.add(this.normalizePlayerName(player.name));
-        }
-
-        this.removePlayer(playerId);
-        return true;
-    }
-
-    addBot() {
-        const botNumber = this.players.filter(p => p.isBot).length + 1;
-        const botId = `bot_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-        const botSocket = {
-            id: botId,
-            emit: () => {},
-            join: () => {},
-            leave: () => {}
-        };
+        const used = new Set(this.players.map(p => p.name));
+        const base = BOT_NAMES.find(n => !used.has(n)) ?? 'Bot';
         const player = {
-            id: botId,
-            socket: botSocket,
-            name: `Bot ${botNumber}`,
+            id: newId(),
+            token: null,
+            name: this.uniqueName(base),
+            isBot: true,
+            socket: null,
+            connected: true,
             hand: [],
-            isHost: false,
-            isBot: true
+            calledUno: false,
+            graceTimer: null
         };
         this.players.push(player);
-        this.broadcastLobbyState();
+        this.record({ type: 'join', playerId: player.id });
+        this.sync();
+        return { player };
     }
 
-    removePlayer(playerId) {
-        const index = this.players.findIndex(p => p.id === playerId);
-        if (index !== -1) {
-            this.players.splice(index, 1);
+    /** Re-attach a socket using the secret token handed out on join. */
+    resume(token, socket) {
+        if (!token || this.bannedTokens.has(token)) return null;
+        const player = this.players.find(p => p.token === token);
+        if (!player) return null;
 
-            if (this.gameStarted && this.players.length > 1) {
-                // Keep the same logical current player after removing someone
-                // who was seated before them.
-                if (index < this.currentPlayerIndex) {
-                    this.currentPlayerIndex -= 1;
-                }
-                if (this.currentPlayerIndex >= this.players.length) {
-                    this.currentPlayerIndex = 0;
-                }
-                this.unoCalledBy.delete(playerId);
-                this.broadcastGameState();
-            } else if (this.players.length > 0) {
-                // Make first player the new host
-                this.players[0].isHost = true;
-                
-                // If game was in progress and only 1 player remains, they win by default
-                if (this.gameStarted) {
-                    this.endGameByForfeit(this.players[0]);
-                } else {
-                    this.broadcastLobbyState();
-                }
-            }
+        if (player.socket && player.socket !== socket) {
+            // The same seat opened in another tab: the newest connection wins.
+            player.socket.emit('room:replaced');
         }
+        clearTimeout(player.graceTimer);
+        player.graceTimer = null;
+        player.socket = socket;
+        player.connected = true;
+        this.sync();
+        return player;
     }
 
-    endGameByForfeit(winner) {
-        this.winner = winner;
-        this.io.to(this.roomCode).emit('gameOver', {
-            winner: { id: winner.id, name: winner.name },
-            scores: this.calculateScores(winner.id),
-            reason: 'forfeit' // All other players left
-        });
-        console.log(`[Room ${this.roomCode}] Game ended by forfeit - ${winner.name} wins`);
+    disconnect(playerId) {
+        const player = this.getPlayer(playerId);
+        if (!player || player.isBot) return;
+
+        player.socket = null;
+        player.connected = false;
+        this.startGraceTimer(player);
+        this.sync();
     }
 
-    hasPlayer(playerId) {
-        return this.players.some(p => p.id === playerId);
+    startGraceTimer(player) {
+        clearTimeout(player.graceTimer);
+        player.graceTimer = setTimeout(() => {
+            player.graceTimer = null;
+            if (!player.connected && this.getPlayer(player.id)) {
+                this.removePlayer(player.id, 'timeout');
+            }
+        }, this.timing.disconnectGrace);
     }
 
-    isHost(playerId) {
-        const player = this.players.find(p => p.id === playerId);
-        return player && player.isHost;
+    kick(byId, targetId) {
+        if (!this.isHost(byId)) return { error: 'Only the host can remove players.' };
+        if (byId === targetId) return { error: 'You can’t remove yourself.' };
+        const target = this.getPlayer(targetId);
+        if (!target) return { error: 'That player has already left.' };
+        if (this.phase === PHASES.PLAYING && !target.isBot) {
+            return { error: 'Players can only be removed between games.' };
+        }
+
+        if (target.token) this.bannedTokens.add(target.token);
+        target.socket?.emit('room:kicked');
+        this.removePlayer(targetId, 'kicked');
+        return { ok: true };
     }
 
-    broadcastLobbyState() {
-        const state = {
-            roomCode: this.roomCode,
-            players: this.players.map(p => ({
-                id: p.id,
-                name: p.name,
-                isHost: p.isHost,
-                isBot: p.isBot
-            })),
-            gameStarted: this.gameStarted
-        };
-        this.io.to(this.roomCode).emit('lobbyState', state);
-    }
+    removePlayer(playerId, reason = 'left') {
+        const index = this.players.findIndex(p => p.id === playerId);
+        if (index === -1) return;
 
-    startGame(startingCardCount = 7, customCardConfig = this.customCardConfig) {
-        if (this.players.length < 2) {
+        const [player] = this.players.splice(index, 1);
+        clearTimeout(player.graceTimer);
+        this.rematchReady.delete(player.id);
+        this.record({ type: 'leave', name: player.name, reason });
+
+        if (!this.humans.length) {
+            this.close();
             return;
         }
 
-        this.startingCardCount = this.normalizeStartingCardCount(startingCardCount);
-        this.customCardConfig = normalizeCustomCardConfig(customCardConfig);
-        this.gameStarted = true;
-        this.deck = shuffleDeck(createDeck(this.customCardConfig));
-        this.discardPile = [];
-        this.direction = 1;
-        this.currentPlayerIndex = 0;
-        this.drawStack = 0;
-        this.unoCalledBy.clear();
-        this.winner = null;
-        this.hasDrawnThisTurn = false;
-        this.rematchVotes = null;
-        this.isDealing = true;
-
-        // Initialize empty hands
-        for (const player of this.players) {
-            player.hand = [];
+        if (this.hostId === player.id) {
+            this.hostId = this.humans[0].id;
         }
 
-        // Place first card (reshuffle if it's a Wild Draw Four)
-        let firstCard;
+        if (this.phase === PHASES.PLAYING) {
+            this.handleSeatRemoved(index, player);
+        } else if (this.phase === PHASES.FINISHED) {
+            this.maybeStartRematch();
+        }
+
+        this.sync();
+    }
+
+    handleSeatRemoved(index, player) {
+        // Their cards go back into the deck so it doesn't shrink over a long game.
+        this.deck = shuffle([...this.deck, ...player.hand]);
+
+        if (this.players.length < LIMITS.minPlayers) {
+            this.finish(this.players[0], 'forfeit');
+            return;
+        }
+
+        if (index < this.currentIndex) {
+            this.currentIndex -= 1;
+        } else if (index === this.currentIndex) {
+            // Hand the turn to whoever would have gone next.
+            if (this.direction === -1) this.currentIndex -= 1;
+            this.currentIndex = (this.currentIndex + this.players.length) % this.players.length;
+            this.hasDrawn = false;
+            this.turnSeq += 1;
+        }
+        this.currentIndex %= this.players.length;
+    }
+
+    updateSettings(byId, settings) {
+        if (!this.isHost(byId)) return { error: 'Only the host can change settings.' };
+        if (this.phase !== PHASES.LOBBY) return { error: 'Settings are locked during a game.' };
+        this.settings = normalizeSettings(settings, this.settings);
+        this.sync();
+        return { ok: true };
+    }
+
+    // ------------------------------------------------------------ game flow
+
+    requestStart(byId) {
+        if (!this.isHost(byId)) return { error: 'Only the host can start the game.' };
+        if (this.phase === PHASES.PLAYING) return { error: 'The game is already running.' };
+        if (this.players.length < LIMITS.minPlayers) return { error: 'You need at least two players.' };
+        this.start();
+        return { ok: true };
+    }
+
+    start() {
+        this.clearTimers();
+        this.resetGame();
+        this.phase = PHASES.PLAYING;
+        this.dealing = true;
+        this.deck = shuffle(createDeck(this.settings));
+
+        // The opening card can't be a wild draw card.
+        let first;
         do {
-            firstCard = this.drawFromDeck();
-            if (!firstCard) return;
-            if (firstCard.type === CARD_TYPES.WILD_DRAW_FOUR || firstCard.type === CARD_TYPES.CUSTOM_DRAW) {
-                this.deck.push(firstCard);
-                this.deck = shuffleDeck(this.deck);
+            first = this.deck.pop();
+            if (first.type === CARD_TYPES.WILD_DRAW_FOUR || first.type === CARD_TYPES.CUSTOM_DRAW) {
+                this.deck.unshift(first);
+                first = null;
             }
-        } while (firstCard.type === CARD_TYPES.WILD_DRAW_FOUR || firstCard.type === CARD_TYPES.CUSTOM_DRAW);
+        } while (!first);
 
-        this.discardPile.push(firstCard);
-        this.currentColor = firstCard.color === 'wild' ? COLORS[Math.floor(Math.random() * 4)] : firstCard.color;
+        this.discard.push(first);
+        this.currentColor = isWildCard(first) ? COLORS[Math.floor(Math.random() * COLORS.length)] : first.color;
+        this.applyOpeningCard(first);
+        this.log = [];
+        this.record({ type: 'start' });
+        this.sync();
 
-        // Handle first card effects
-        this.handleFirstCardEffect(firstCard);
-
-        this.broadcastGameState();
-        this.io.to(this.roomCode).emit('gameStarted');
-        
-        // Deal cards with animation effect
-        this.dealInitialCards(this.startingCardCount);
+        this.deal(this.settings.startingCards);
     }
 
-    normalizeStartingCardCount(value) {
-        const count = Number.parseInt(value, 10);
-        if (!Number.isFinite(count)) return 7;
-        return Math.min(20, Math.max(1, count));
-    }
-
-    async dealInitialCards(count) {
-        // Delay to allow game screen to load
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Deal 1 card to each player, 'count' times
-        for (let i = 0; i < count; i++) {
-             await new Promise(resolve => setTimeout(resolve, 200)); // Delay between rounds
-             
-             for (const player of this.players) {
-                 const card = this.drawFromDeck();
-                 if (!card) break; // Safety check if deck runs out
-                 
-                 player.hand.push(card);
-                 
-                 // Notify player (triggers animation)
-                 player.socket.emit('cardsDrawn', [card]);
-             }
-             // Update everyone (updates card counts for opponents)
-             this.broadcastGameState();
+    applyOpeningCard(card) {
+        if (card.type === CARD_TYPES.SKIP) this.advance(1);
+        if (card.type === CARD_TYPES.REVERSE) {
+            if (this.players.length === 2) this.advance(1);
+            else this.direction = -1;
         }
-        
-        this.isDealing = false;
-        this.broadcastGameState();
+        if (card.type === CARD_TYPES.DRAW_TWO) this.drawStack = 2;
     }
 
-    handleFirstCardEffect(card) {
-        switch (card.type) {
-            case CARD_TYPES.SKIP:
-                this.nextTurn();
-                break;
-            case CARD_TYPES.REVERSE:
-                if (this.players.length === 2) {
-                    this.nextTurn();
-                } else {
-                    this.direction *= -1;
-                }
-                break;
-            case CARD_TYPES.DRAW_TWO:
-                this.drawStack = 2;
-                break;
-            case CARD_TYPES.WILD:
-                // Random color already set
-                break;
-        }
+    deal(rounds) {
+        let round = 0;
+        const dealRound = () => {
+            for (const player of this.players) {
+                const card = this.drawFromDeck();
+                if (card) player.hand.push(card);
+            }
+            round += 1;
+            if (round < rounds) {
+                this.later(dealRound, this.timing.dealRoundDelay);
+            } else {
+                this.dealing = false;
+                this.turnSeq += 1;
+            }
+            this.sync();
+        };
+        this.later(dealRound, this.timing.dealStartDelay);
     }
 
     drawFromDeck() {
-        if (this.deck.length === 0) {
-            if (this.discardPile.length <= 1) {
-                return null;
-            }
-
-            // Reshuffle discard pile into deck, preserving the visible top card.
-            const topCard = this.discardPile.pop();
-            this.deck = shuffleDeck(this.discardPile);
-            this.discardPile = [topCard];
+        if (!this.deck.length) {
+            if (this.discard.length <= 1) return null;
+            const top = this.discard.pop();
+            this.deck = shuffle(this.discard);
+            this.discard = [top];
         }
-        return this.deck.pop() || null;
+        return this.deck.pop() ?? null;
     }
 
-    isActionLocked() {
-        return this.isDealing || Date.now() < this.actionLockedUntil;
-    }
-
-    lockActionsForDraw(cardCount) {
-        if (cardCount <= 0) return;
-        const duration = Math.min(1800, 450 + cardCount * 170);
-        this.actionLockedUntil = Math.max(this.actionLockedUntil, Date.now() + duration);
-    }
-
-    playCard(playerId, cardIndicesOrIndex, chosenColor) {
-        if (this.isActionLocked()) return;
-
-        const playerIndex = this.players.findIndex(p => p.id === playerId);
-        if (playerIndex === -1 || playerIndex !== this.currentPlayerIndex) {
-            return;
-        }
-
-        const player = this.players[playerIndex];
-
-        // Normalize to array (Client sends insertion order now)
-        const cardIndices = Array.isArray(cardIndicesOrIndex) ? [...cardIndicesOrIndex] : [cardIndicesOrIndex];
-        const normalizedCardIndices = cardIndices.map(idx => Number(idx));
-        const uniqueCardIndices = new Set(normalizedCardIndices);
-
-        // Validate indices
-        if (
-            uniqueCardIndices.size !== normalizedCardIndices.length ||
-            normalizedCardIndices.some(idx => !Number.isInteger(idx) || idx < 0 || idx >= player.hand.length)
-        ) {
-            return;
-        }
-
-        // Indices to remove must be sorted descending to safe splice
-        const indicesToRemove = [...normalizedCardIndices].sort((a, b) => b - a);
-
-        // Cards in user-selected order
-        const cardsToPlay = normalizedCardIndices.map(idx => player.hand[idx]);
-        
-        // Ensure compatibility within the set itself
-        if (!areCardsCompatible(cardsToPlay)) {
-            console.log(`[Room ${this.roomCode}] Play rejected: Cards not compatible ${JSON.stringify(cardsToPlay)}`);
-            return;
-        }
-
-        const topCard = this.discardPile[this.discardPile.length - 1];
-
-        // STRICT CHECK: The FIRST card selected must be playable on the pile.
-        const firstCard = cardsToPlay[0];
-        let isPlayable = false;
-
-        // During a pending draw stack, only plus cards can be stacked.
-        if (this.drawStack > 0) {
-            isPlayable = isPlusCard(topCard) && isPlusCard(firstCard);
-        } else {
-            isPlayable = canPlayCard(firstCard, topCard, this.currentColor);
-        }
-
-        if (!isPlayable) {
-            console.log(`[Room ${this.roomCode}] Play rejected: First card not playable. Top: ${JSON.stringify(topCard)}, Color: ${this.currentColor}, First: ${JSON.stringify(firstCard)}`);
-            return;
-        }
-
-        // Calculate cards remaining after this play
-        const cardsRemainingAfterPlay = player.hand.length - cardsToPlay.length;
-        
-        // Check if trying to chip out (win) with special cards
-        const hasSpecialCard = cardsToPlay.some(c => 
-            c.type === CARD_TYPES.SKIP || 
-            c.type === CARD_TYPES.REVERSE || 
-            c.type === CARD_TYPES.DRAW_TWO || 
-            c.type === CARD_TYPES.WILD || 
-            c.type === CARD_TYPES.WILD_DRAW_FOUR ||
-            c.type === CARD_TYPES.CUSTOM_DRAW
-        );
-        
-        if (cardsRemainingAfterPlay === 0 && hasSpecialCard) {
-            // Cannot chip out with special cards - notify and reject
-            player.socket.emit('playRejected', {
-                reason: 'Cannot win with special cards (+2, +4, Wild, Reverse, Skip). You must finish with a number card!'
-            });
-            console.log(`[Room ${this.roomCode}] ${player.name} tried to chip out with special cards - rejected`);
-            return;
-        }
-
-        // UNO ENFORCEMENT: Player must call UNO only when they currently have exactly 1 card.
-        // That means UNO is required only before chipping out (going from 1 to 0).
-        const needsUno = player.hand.length === 1;
-        
-        if (needsUno && !this.unoCalledBy.has(playerId)) {
-            // Player forgot to call UNO! Give them 2 penalty cards and warn everyone
-            console.log(`[Room ${this.roomCode}] ${player.name} forgot to call UNO! Penalty: +2 cards`);
-            
-            // Draw 2 penalty cards
-            const penaltyCards = [];
-            for (let i = 0; i < 2; i++) {
-                const card = this.drawFromDeck();
-                if (!card) break;
-                player.hand.push(card);
-                penaltyCards.push(card);
-            }
-            
-            // Notify the player of their penalty cards
-            player.socket.emit('cardsDrawn', penaltyCards);
-            this.lockActionsForDraw(penaltyCards.length);
-            
-            // Broadcast the cheater warning to everyone
-            this.io.to(this.roomCode).emit('unoForgotten', {
-                playerId,
-                playerName: player.name
-            });
-            
-            // The play is rejected - they must try again after getting penalty
-            this.broadcastGameState();
-            return;
-        }
-
-        // Remove cards from hand (using sorted indices)
-        for (const idx of indicesToRemove) {
-            player.hand.splice(idx, 1);
-        }
-        
-        // Push to discard pile (in user selected order)
-        for (const card of cardsToPlay) {
-            this.discardPile.push(card);
-        }
-
-        // The visible top card is the last selected card, so it owns the active color.
-        // A chosen wild color only matters when the last card is actually wild.
-        const topPlayedCard = cardsToPlay[cardsToPlay.length - 1];
-        if (topPlayedCard.color === 'wild') {
-            this.currentColor = COLORS.includes(chosenColor) ? chosenColor : COLORS[0];
-        } else {
-            this.currentColor = topPlayedCard.color;
-        }
-
-        // Clear UNO call only if they no longer have exactly 1 card
-        // (If they have 1 card, they must remain in the set to be safe from catching)
-        if (player.hand.length !== 1) {
-            this.unoCalledBy.delete(playerId);
-        }
-
-        // Check for win
-        if (player.hand.length === 0) {
-            this.winner = player;
-            this.rematchVotes = null;
-            this.io.to(this.roomCode).emit('gameOver', {
-                winner: { id: player.id, name: player.name },
-                scores: this.calculateScores(player.id)
-            });
-            return;
-        }
-
-        // Calculate and apply effects from ALL cards
-        let skipSteps = 0;
-        let totalDraw = 0;
-        let reverseFlipped = false;
-
-        for (const card of cardsToPlay) {
-            if (card.type === CARD_TYPES.SKIP) skipSteps++;
-            totalDraw += getDrawAmount(card);
-            if (card.type === CARD_TYPES.REVERSE) {
-                if (this.players.length === 2) skipSteps++;
-                else reverseFlipped = !reverseFlipped;
-            }
-        }
-
-        this.drawStack += totalDraw;
-        if (reverseFlipped) this.direction *= -1;
-
-        // Advance turn (1 base + any skips)
-        let steps = 1 + skipSteps;
-        
-        // Special Rule for 1v1: Playing Skips/Reverses should always keep turn with player
-        if (this.players.length === 2 && skipSteps > 0) {
-             if (steps % 2 !== 0) {
-                 steps++;
-             }
-        }
-
-        console.log(`[Room ${this.roomCode}] Turn transition: skipSteps=${skipSteps}, totalSteps=${steps}, direction=${this.direction}, playercount=${this.players.length}`);
-        const oldIndex = this.currentPlayerIndex;
-        for (let i = 0; i < steps; i++) {
-            this.nextTurn();
-        }
-        console.log(`[Room ${this.roomCode}] Turn moved from ${oldIndex} to ${this.currentPlayerIndex}`);
-
-        // Broadcast the play
-        console.log(`[Room ${this.roomCode}] ${player.name} (${playerId}) played ${cardsToPlay.length} card(s): ${cardsToPlay.map(c => `${c.color} ${c.type}${c.value !== undefined ? ' ' + c.value : ''}`).join(', ')}`);
-        this.io.to(this.roomCode).emit('cardPlayed', {
-            playerId,
-            playerName: player.name,
-            card: cardsToPlay[cardsToPlay.length - 1], // Display the "top" one
-            count: cardsToPlay.length,
-            chosenColor: this.currentColor
-        });
-
-        this.broadcastGameState();
-    }
-
-    drawCard(playerId) {
-        if (this.isActionLocked()) return;
-
-        const playerIndex = this.players.findIndex(p => p.id === playerId);
-        if (playerIndex === -1 || playerIndex !== this.currentPlayerIndex) {
-            return;
-        }
-
-        const player = this.players[playerIndex];
-        const topCard = this.discardPile[this.discardPile.length - 1];
-
-        // Check if already drawn this turn
-        if (this.hasDrawnThisTurn) {
-            console.log(`[Room ${this.roomCode}] ${player.name} tried to draw again in same turn.`);
-            return;
-        }
-
-        // If no draw stack, check if they have any legal plays
-        if (this.drawStack === 0) {
-            const hasLegalPlay = this.hasLegalPlay(player, topCard, this.currentColor, this.drawStack);
-            if (hasLegalPlay) {
-                console.log(`[Room ${this.roomCode}] ${player.name} tried to draw but has playable cards.`);
-                return;
-            }
-        }
-
-        // If there's a draw stack, draw that many
-        const cardsToDraw = this.drawStack > 0 ? this.drawStack : 1;
-        this.drawStack = 0;
-
-        const drawnCards = [];
-        for (let i = 0; i < cardsToDraw; i++) {
+    drawInto(player, count) {
+        const drawn = [];
+        for (let i = 0; i < count; i++) {
             const card = this.drawFromDeck();
             if (!card) break;
             player.hand.push(card);
-            drawnCards.push(card);
+            drawn.push(card);
         }
-
-        // Notify the player of their drawn cards
-        player.socket.emit('cardsDrawn', drawnCards);
-        this.lockActionsForDraw(drawnCards.length);
-
-        // Clear UNO status since they drew cards
-        this.unoCalledBy.delete(playerId);
-
-        // DO NOT automatically skip turn anymore, let the player decide to play or pass
-        this.hasDrawnThisTurn = true;
-        this.broadcastGameState();
+        player.calledUno = false;
+        this.settleUntil = Math.max(this.settleUntil, Date.now() + this.timing.drawSettle(drawn.length));
+        return drawn;
     }
 
-    passTurn(playerId) {
-        if (this.isActionLocked()) return;
+    advance(steps) {
+        const n = this.players.length;
+        this.currentIndex = ((this.currentIndex + this.direction * steps) % n + n) % n;
+        this.hasDrawn = false;
+        this.turnSeq += 1;
+    }
 
-        const playerIndex = this.players.findIndex(p => p.id === playerId);
-        if (playerIndex === -1 || playerIndex !== this.currentPlayerIndex) {
+    get table() {
+        return {
+            topCard: this.discard[this.discard.length - 1],
+            currentColor: this.currentColor,
+            drawStack: this.drawStack
+        };
+    }
+
+    turnGuard(playerId) {
+        if (this.phase !== PHASES.PLAYING) return 'The game isn’t running.';
+        if (this.dealing) return 'Hang on — still dealing.';
+        if (this.currentPlayer?.id !== playerId) return 'It’s not your turn.';
+        return null;
+    }
+
+    play(playerId, cardIds, chosenColor) {
+        const blocked = this.turnGuard(playerId);
+        if (blocked) return { error: blocked };
+
+        const player = this.currentPlayer;
+        const ids = Array.isArray(cardIds) ? cardIds.map(Number) : [];
+        if (!ids.length || new Set(ids).size !== ids.length) return { error: 'Select a card to play.' };
+
+        const cards = ids.map(id => player.hand.find(card => card.id === id));
+        if (cards.some(card => !card)) return { error: 'Those cards aren’t in your hand.' };
+
+        const invalid = validatePlay(cards, player.hand.length, this.table);
+        if (invalid) return { error: invalid };
+
+        const top = cards[cards.length - 1];
+        if (isWildCard(top) && !COLORS.includes(chosenColor)) return { error: 'Choose a colour for your wild card.' };
+
+        // Going out requires calling UNO first; forgetting costs two cards and the play.
+        if (player.hand.length === 1 && !player.calledUno) {
+            this.drawInto(player, 2);
+            this.record({ type: 'penalty', playerId: player.id, count: 2 });
+            this.sync();
+            return { error: 'You forgot to call UNO! +2 cards.' };
+        }
+
+        const playedIds = new Set(ids);
+        player.hand = player.hand.filter(card => !playedIds.has(card.id));
+        this.discard.push(...cards);
+        this.currentColor = isWildCard(top) ? chosenColor : top.color;
+        if (player.hand.length !== 1) player.calledUno = false;
+
+        this.record({ type: 'play', playerId: player.id, cards, color: this.currentColor });
+
+        if (!player.hand.length) {
+            this.finish(player, 'won');
+            this.sync();
+            return { ok: true };
+        }
+
+        this.applyEffects(cards);
+
+        if (player.isBot && player.hand.length === 1) {
+            player.calledUno = true;
+            this.record({ type: 'uno', playerId: player.id });
+        }
+
+        this.sync();
+        return { ok: true };
+    }
+
+    applyEffects(cards) {
+        let skips = 0;
+        let reverses = 0;
+        for (const card of cards) {
+            if (card.type === CARD_TYPES.SKIP) skips += 1;
+            if (card.type === CARD_TYPES.REVERSE) reverses += 1;
+            this.drawStack += getDrawAmount(card);
+        }
+
+        if (this.players.length === 2) {
+            // Heads-up, skips and reverses both mean "go again".
+            this.advance(skips + reverses > 0 ? 0 : 1);
             return;
         }
 
-        if (!this.hasDrawnThisTurn) {
-            console.log(`[Room ${this.roomCode}] ${this.players[playerIndex].name} tried to pass without drawing first.`);
-            return;
+        if (reverses % 2 === 1) this.direction *= -1;
+        this.advance(1 + skips);
+    }
+
+    draw(playerId) {
+        const blocked = this.turnGuard(playerId);
+        if (blocked) return { error: blocked };
+
+        const player = this.currentPlayer;
+        if (this.hasDrawn) return { error: 'You’ve already drawn this turn.' };
+        if (this.drawStack === 0 && hasLegalPlay(player.hand, this.table)) {
+            return { error: 'You have a card you can play.' };
         }
-        
-        console.log(`[Room ${this.roomCode}] ${this.players[playerIndex].name} passed their turn.`);
-        this.nextTurn();
-        this.broadcastGameState();
+
+        const count = this.drawStack || 1;
+        this.drawStack = 0;
+        const drawn = this.drawInto(player, count);
+        this.hasDrawn = true;
+        this.record({ type: 'draw', playerId: player.id, count: drawn.length, forced: count > 1 });
+        this.sync();
+        return { ok: true, cards: drawn };
+    }
+
+    pass(playerId) {
+        const blocked = this.turnGuard(playerId);
+        if (blocked) return { error: blocked };
+
+        const player = this.currentPlayer;
+        if (!this.hasDrawn) return { error: 'Draw a card before passing.' };
+        if (hasLegalPlay(player.hand, this.table)) return { error: 'You have a card you can play.' };
+
+        this.record({ type: 'pass', playerId: player.id });
+        this.advance(1);
+        this.sync();
+        return { ok: true };
     }
 
     callUno(playerId) {
-        const player = this.players.find(p => p.id === playerId);
-        // Allow calling UNO only when the player has exactly 1 card.
-        if (player && player.hand.length === 1) {
-            this.unoCalledBy.add(playerId);
-            this.io.to(this.roomCode).emit('unoCalled', {
-                playerId,
-                playerName: player.name
+        const player = this.getPlayer(playerId);
+        if (!player || this.phase !== PHASES.PLAYING) return { error: 'The game isn’t running.' };
+        if (player.hand.length !== 1) return { error: 'You can call UNO when you have one card left.' };
+        if (player.calledUno) return { ok: true };
+
+        player.calledUno = true;
+        this.record({ type: 'uno', playerId: player.id });
+        this.sync();
+        return { ok: true };
+    }
+
+    finish(winner, reason) {
+        this.clearTimers();
+        this.phase = PHASES.FINISHED;
+        this.dealing = false;
+        this.rematchReady = new Set(this.players.filter(p => p.isBot).map(p => p.id));
+
+        const standings = this.players
+            .map(p => ({ id: p.id, name: p.name, isBot: p.isBot, cardCount: p.hand.length, points: handPoints(p.hand) }))
+            .sort((a, b) => {
+                if (a.id === winner.id) return -1;
+                if (b.id === winner.id) return 1;
+                return a.cardCount - b.cardCount || a.points - b.points;
             });
-            // Refresh state immediately so catch targets and UNO availability are in sync.
-            this.broadcastGameState();
-        }
+
+        this.results = { winnerId: winner.id, winnerName: winner.name, reason, standings };
+        this.record({ type: 'end', playerId: winner.id, reason });
     }
 
-    requestRematch(playerId) {
-        if (!this.winner) {
-            return { success: false, error: 'The game is still in progress' };
-        }
+    setReady(playerId, ready) {
+        if (this.phase !== PHASES.FINISHED) return { error: 'The game is still running.' };
+        if (!this.getPlayer(playerId)) return { error: 'You’re not in this room.' };
 
-        if (!this.players.some(p => p.id === playerId)) {
-            return { success: false, error: 'Player not found' };
-        }
+        if (ready) this.rematchReady.add(playerId);
+        else this.rematchReady.delete(playerId);
 
-        if (!this.rematchVotes) {
-            this.rematchVotes = new Map();
-            for (const player of this.players) {
-                if (player.isBot) {
-                    this.rematchVotes.set(player.id, true);
-                }
-            }
-        }
-
-        this.rematchVotes.set(playerId, true);
-        return this.resolveRematchState();
+        if (!this.maybeStartRematch()) this.sync();
+        return { ok: true };
     }
 
-    respondRematch(playerId, wantsRematch) {
-        if (!this.winner) {
-            return { success: false, error: 'The game is still in progress' };
-        }
-
-        const player = this.players.find(p => p.id === playerId);
-        if (!player) {
-            return { success: false, error: 'Player not found' };
-        }
-
-        if (!wantsRematch) {
-            this.rematchVotes = null;
-            this.clearPendingBotTurn();
-            this.io.to(this.roomCode).emit('rematchDeclined', {
-                playerId: player.id,
-                playerName: player.name
-            });
-            return { success: true, declined: true };
-        }
-
-        if (!this.rematchVotes) {
-            this.rematchVotes = new Map();
-            for (const p of this.players) {
-                if (p.isBot) {
-                    this.rematchVotes.set(p.id, true);
-                }
-            }
-        }
-
-        this.rematchVotes.set(playerId, true);
-        return this.resolveRematchState();
-    }
-
-    resolveRematchState() {
-        const state = this.getRematchState();
-        if (!state) {
-            return { success: false, error: 'Rematch is not available' };
-        }
-
-        this.io.to(this.roomCode).emit('rematchState', state);
-
-        if (state.acceptedCount === state.totalCount) {
-            this.startGame(this.startingCardCount, this.customCardConfig);
-            return { success: true, started: true, state };
-        }
-
-        return { success: true, started: false, state };
-    }
-
-    getRematchState() {
-        if (!this.rematchVotes) return null;
-
-        const players = this.players.map(player => ({
-            id: player.id,
-            name: player.name,
-            isBot: player.isBot,
-            accepted: this.rematchVotes.get(player.id) === true
-        }));
-
-        return {
-            players,
-            acceptedCount: players.filter(player => player.accepted).length,
-            totalCount: players.length
-        };
-    }
-
-    catchUno(catcherId, targetPlayerId) {
-        // UNO is enforced when a player tries to play their final card.
-        // A player sitting on one card is not catchable under this ruleset.
-        return false;
-    }
-
-    nextTurn() {
-        this.currentPlayerIndex = (this.currentPlayerIndex + this.direction + this.players.length) % this.players.length;
-        this.hasDrawnThisTurn = false;
-    }
-
-    clearPendingBotTurn() {
-        if (this.pendingBotTurn?.timerId) {
-            clearTimeout(this.pendingBotTurn.timerId);
-        }
-        this.pendingBotTurn = null;
-    }
-
-    botThinkDelay() {
-        if (this.hasDrawnThisTurn) {
-            return 700 + Math.floor(Math.random() * 800);
-        }
-        return 1500 + Math.floor(Math.random() * 1500);
-    }
-
-    botActDelay() {
-        return 450 + Math.floor(Math.random() * 550);
-    }
-
-    scheduleBotTurn(playerId, delay, action) {
-        this.clearPendingBotTurn();
-        this.pendingBotTurn = {
-            playerId,
-            timerId: setTimeout(() => {
-                this.pendingBotTurn = null;
-                action();
-            }, delay)
-        };
-    }
-
-    maybeHandleBotTurn() {
-        if (!this.gameStarted) {
-            this.clearPendingBotTurn();
-            return;
-        }
-        const currentPlayer = this.players[this.currentPlayerIndex];
-        if (!currentPlayer || !currentPlayer.isBot || this.winner) {
-            this.clearPendingBotTurn();
-            return;
-        }
-
-        if (this.pendingBotTurn && this.pendingBotTurn.playerId === currentPlayer.id) {
-            return;
-        }
-
-        if (this.isActionLocked()) {
-            const delay = this.isDealing
-                ? 400
-                : Math.max(120, this.actionLockedUntil - Date.now() + 120);
-            this.scheduleBotTurn(currentPlayer.id, delay, () => this.maybeHandleBotTurn());
-            return;
-        }
-
-        this.scheduleBotTurn(currentPlayer.id, this.botThinkDelay(), () => {
-            this.performBotTurn(currentPlayer.id);
-        });
-    }
-
-    performBotTurn(botId) {
-        const playerIndex = this.players.findIndex(p => p.id === botId);
-        if (playerIndex === -1 || playerIndex !== this.currentPlayerIndex) {
-            return;
-        }
-
-        const bot = this.players[playerIndex];
-        if (!bot.isBot || this.winner) return;
-        if (this.isActionLocked()) {
-            this.maybeHandleBotTurn();
-            return;
-        }
-
-        const topCard = this.discardPile[this.discardPile.length - 1];
-        let playableGroups = this.getBotPlayableGroups(bot.hand, topCard, this.currentColor, this.drawStack);
-        const hasLegalPlay = this.hasLegalPlay(bot, topCard, this.currentColor, this.drawStack);
-
-        if (!hasLegalPlay && this.drawStack === 0) {
-            playableGroups = [];
-        }
-        if (this.drawStack === 0) {
-            const hasPlayableCard = bot.hand.some(card => canPlayCard(card, topCard, this.currentColor));
-            if (hasPlayableCard && playableGroups.length === 0 && hasLegalPlay) {
-                playableGroups = this.getBotSinglePlayableGroups(bot.hand, topCard, this.currentColor);
-            }
-        }
-
-        if (this.drawStack > 0) {
-            if (playableGroups.length > 0) {
-                const selection = this.chooseBotPlay(bot.hand, playableGroups, topCard, this.currentColor);
-                if (!selection) return;
-                this.executeBotPlay(bot, selection);
-            } else {
-                this.drawCard(bot.id);
-            }
-            return;
-        }
-
-        if (playableGroups.length === 0) {
-            if (!this.hasDrawnThisTurn) {
-                this.drawCard(bot.id);
-            } else {
-                this.passTurn(bot.id);
-            }
-            return;
-        }
-
-        const selection = this.chooseBotPlay(bot.hand, playableGroups, topCard, this.currentColor);
-        if (!selection) return;
-        this.executeBotPlay(bot, selection);
-    }
-
-    executeBotPlay(bot, selection) {
-        const chosenColor = this.getBotWildColor(bot.hand, selection.indices[0]);
-        const play = () => {
-            const stillCurrent = this.players[this.currentPlayerIndex]?.id === bot.id;
-            if (!stillCurrent || this.winner) return;
-            this.playCard(bot.id, selection.indices, chosenColor);
-        };
-
-        if (this.shouldBotCallUno(bot.hand, selection.indices.length)) {
-            this.scheduleBotTurn(bot.id, this.botActDelay(), play);
-            this.callUno(bot.id);
-            return;
-        }
-
-        play();
-    }
-
-    getBotPlayableGroups(hand, topCard, currentColor, drawStack) {
-        const groups = new Map();
-
-        hand.forEach((card, index) => {
-            const key = `${card.type}:${card.value}`;
-            if (!groups.has(key)) {
-                groups.set(key, { card, indices: [] });
-            }
-            groups.get(key).indices.push(index);
-        });
-
-        const playableGroups = [];
-        for (const group of groups.values()) {
-            if (drawStack > 0) {
-                if (isPlusCard(topCard) && isPlusCard(group.card)) {
-                    playableGroups.push(group);
-                }
-            } else if (canPlayCard(group.card, topCard, currentColor)) {
-                playableGroups.push(group);
-            }
-        }
-
-        return playableGroups;
-    }
-
-    getBotSinglePlayableGroups(hand, topCard, currentColor) {
-        const playableGroups = [];
-        for (let i = 0; i < hand.length; i++) {
-            const card = hand[i];
-            if (canPlayCard(card, topCard, currentColor)) {
-                playableGroups.push({ card, indices: [i] });
-            }
-        }
-        return playableGroups;
-    }
-
-    hasLegalPlay(player, topCard, currentColor, drawStack) {
-        if (!player || !topCard) return false;
-
-        if (drawStack > 0) {
-            return player.hand.some(card =>
-                isPlusCard(topCard) && isPlusCard(card)
-            );
-        }
-
-        for (const card of player.hand) {
-            if (!canPlayCard(card, topCard, currentColor)) continue;
-
-            if (player.hand.length === 1) {
-                if (card.type !== CARD_TYPES.NUMBER) {
-                    continue;
-                }
-            }
-
+    maybeStartRematch() {
+        const everyoneReady = this.players.every(p => this.rematchReady.has(p.id));
+        if (this.phase === PHASES.FINISHED && everyoneReady && this.players.length >= LIMITS.minPlayers) {
+            this.start();
             return true;
         }
-
         return false;
     }
 
-    chooseBotPlay(hand, playableGroups, topCard, currentColor) {
-        // Count colors in hand (for wild color choice later)
-        const colorCounts = { red: 0, yellow: 0, green: 0, blue: 0 };
-        hand.forEach(card => {
-            if (colorCounts[card.color] !== undefined) {
-                colorCounts[card.color] += 1;
-            }
+    returnToLobby(byId) {
+        if (!this.isHost(byId)) return { error: 'Only the host can do that.' };
+        if (this.phase === PHASES.LOBBY) return { ok: true };
+        this.clearTimers();
+        this.resetGame();
+        this.phase = PHASES.LOBBY;
+        this.sync();
+        return { ok: true };
+    }
+
+    // ------------------------------------------------------------------ bots
+
+    scheduleBot() {
+        clearTimeout(this.botTimer);
+        this.botTimer = null;
+
+        const bot = this.currentPlayer;
+        if (!bot?.isBot || this.dealing || this.closed) return;
+        if (!this.hasAudience()) return;
+
+        const think = randomBetween(this.hasDrawn ? this.timing.botAfterDraw : this.timing.botThink);
+        const settle = Math.max(0, this.settleUntil - Date.now());
+        const expectedTurn = this.turnSeq;
+
+        this.botTimer = setTimeout(() => {
+            this.botTimer = null;
+            if (this.turnSeq !== expectedTurn || this.currentPlayer?.id !== bot.id) return;
+            this.runBotTurn(bot);
+        }, think + settle);
+    }
+
+    /** Bots wait for at least one person to be watching (e.g. after a server restart). */
+    hasAudience() {
+        return this.humans.some(p => p.connected);
+    }
+
+    runBotTurn(bot) {
+        const next = this.players[((this.currentIndex + this.direction) % this.players.length + this.players.length) % this.players.length];
+        const choice = chooseBotPlay(bot.hand, this.table, {
+            nextOpponentCards: next?.hand.length ?? 7,
+            anyoneLow: this.players.some(p => p.id !== bot.id && p.hand.length <= 2)
         });
 
-        // Get info about next player
-        const nextPlayerInfo = this.getNextPlayerInfo();
-        const nextPlayerCards = nextPlayerInfo?.handSize || 7;
-        const nextPlayerIsDangerous = nextPlayerCards <= 2;
-        const isEndgame = hand.length <= 3 || this.players.some(p => p.hand.length <= 2);
-
-        let bestSelection = null;
-        let bestScore = -Infinity;
-
-        for (const group of playableGroups) {
-            const card = group.card;
-            let playCount = group.indices.length;
-            const cardsAfterPlay = hand.length - playCount;
-            const wouldWin = cardsAfterPlay === 0;
-            const isSpecial = card.type !== CARD_TYPES.NUMBER;
-
-            // Don't play special cards to win (must use number cards)
-            if (isSpecial && wouldWin) {
-                if (playCount > 1) {
-                    // Can play multiple - only play enough to leave 1 card
-                    playCount -= 1;
-                } else {
-                    // Skip this option - can't win with special card
-                    continue;
-                }
-            }
-
-            let score = 0;
-
-            // === WINNING PRIORITY ===
-            if (cardsAfterPlay === 0) {
-                // Highest priority: winning the game
-                score += 10000;
-            } else if (cardsAfterPlay === 1) {
-                // Second priority: getting to UNO
-                score += 500;
-            }
-
-            // === OFFENSIVE PLAY BONUSES ===
-            // When opponent is dangerous (has 1-2 cards), prioritize attack cards
-            if (nextPlayerIsDangerous) {
-                if (card.type === CARD_TYPES.DRAW_TWO) score += 200;
-                if (card.type === CARD_TYPES.WILD_DRAW_FOUR) score += 250;
-                if (card.type === CARD_TYPES.CUSTOM_DRAW) score += 260 + getDrawAmount(card);
-                if (card.type === CARD_TYPES.SKIP) score += 150;
-                if (card.type === CARD_TYPES.REVERSE) score += 100;
-            }
-
-            // === MULTI-CARD BONUS ===
-            // Playing multiple cards is generally good
-            score += playCount * 15;
-
-            // === COLOR STRATEGY ===
-            // Prefer colors we have the most of (so we can keep playing)
-            const effectiveColor = card.color === 'wild' ? currentColor : card.color;
-            if (effectiveColor && colorCounts[effectiveColor]) {
-                score += colorCounts[effectiveColor] * 3;
-            }
-
-            // === CARD TYPE PRIORITIES ===
-            // In endgame, prefer action cards to disrupt opponents
-            if (isEndgame) {
-                if (card.type === CARD_TYPES.NUMBER) {
-                    score += 5; // Still good to play numbers
-                } else if (card.type === CARD_TYPES.DRAW_TWO) {
-                    score += 20; // Great for offense
-                } else if (card.type === CARD_TYPES.SKIP) {
-                    score += 15; // Good for skipping dangerous players
-                } else if (card.type === CARD_TYPES.REVERSE) {
-                    score += 10; // Can redirect to safer player
-                } else if (card.type === CARD_TYPES.WILD) {
-                    score += 8; // Flexibility
-                } else if (card.type === CARD_TYPES.WILD_DRAW_FOUR) {
-                    score += 25; // Best offensive card
-                } else if (card.type === CARD_TYPES.CUSTOM_DRAW) {
-                    score += 25 + getDrawAmount(card);
-                }
-            } else {
-                // Early/mid game: conserve action cards, play numbers
-                if (card.type === CARD_TYPES.NUMBER) {
-                    score += 20; // Preferred early
-                } else if (card.type === CARD_TYPES.SKIP || card.type === CARD_TYPES.REVERSE) {
-                    score -= 5; // Save for later
-                } else if (card.type === CARD_TYPES.DRAW_TWO) {
-                    score -= 3; // Save for when needed
-                } else if (card.type === CARD_TYPES.WILD) {
-                    score -= 10; // Save wild cards for emergencies
-                } else if (card.type === CARD_TYPES.WILD_DRAW_FOUR) {
-                    score -= 15; // Save +4 for desperate situations or endgame
-                } else if (card.type === CARD_TYPES.CUSTOM_DRAW) {
-                    score -= Math.max(8, getDrawAmount(card));
-                }
-            }
-
-            // === SAVING CARDS BONUS ===
-            // If we have 2+ of same card type, playing them is good
-            if (playCount >= 2) {
-                score += 10;
-            }
-
-            // === PENALTIES ===
-            // Don't waste wild cards on small advantages
-            if (card.color === 'wild' && !isEndgame && !nextPlayerIsDangerous) {
-                score -= 20;
-            }
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestSelection = {
-                    indices: group.indices.slice(0, playCount)
-                };
-            }
+        let result;
+        if (choice) {
+            result = this.play(bot.id, choice.cardIds, choice.color);
+        } else if (!this.hasDrawn) {
+            result = this.draw(bot.id);
+        } else {
+            result = this.pass(bot.id);
         }
 
-        if (!bestSelection && playableGroups.length > 0) {
-            bestSelection = { indices: [playableGroups[0].indices[0]] };
-        }
-
-        return bestSelection;
-    }
-
-    getNextPlayerInfo() {
-        if (this.players.length <= 1) return null;
-        const nextIndex = (this.currentPlayerIndex + this.direction + this.players.length) % this.players.length;
-        const nextPlayer = this.players[nextIndex];
-        return nextPlayer ? { id: nextPlayer.id, handSize: nextPlayer.hand.length, isBot: nextPlayer.isBot } : null;
-    }
-
-    botTryCatchUno(botId) {
-        return false;
-    }
-
-    getBotWildColor(hand, wildIndex) {
-        const card = hand[wildIndex];
-        if (!card || card.color !== 'wild') return undefined;
-
-        // If this is the last card, we shouldn't be playing a wild (number card required)
-        if (hand.length === 1) return 'red'; // Fallback
-
-        const colorCounts = { red: 0, yellow: 0, green: 0, blue: 0 };
-        const colorPlayability = { red: 0, yellow: 0, green: 0, blue: 0 };
-
-        hand.forEach((c, idx) => {
-            if (idx === wildIndex) return;
-            if (colorCounts[c.color] !== undefined) {
-                colorCounts[c.color] += 1;
-                // Bonus for cards that can be played next (numbers are more versatile)
-                if (c.type === CARD_TYPES.NUMBER) {
-                    colorPlayability[c.color] += 2;
-                } else {
-                    colorPlayability[c.color] += 1;
-                }
-            }
-        });
-
-        // Get next player's info
-        const nextPlayer = this.getNextPlayerInfo();
-        const nextPlayerIsDangerous = nextPlayer && nextPlayer.handSize <= 2;
-
-        let bestColor = 'red';
-        let bestScore = -Infinity;
-
-        for (const color of COLORS) {
-            let score = 0;
-            const count = colorCounts[color];
-
-            // Base score: number of cards of this color
-            score += count * 10;
-
-            // Bonus for playability
-            score += colorPlayability[color] * 3;
-
-            // Prefer colors where we have action cards if next player is dangerous
-            if (nextPlayerIsDangerous) {
-                const hasSkip = hand.some(c => c.color === color && c.type === CARD_TYPES.SKIP);
-                const hasDrawTwo = hand.some(c => c.color === color && c.type === CARD_TYPES.DRAW_TWO);
-                const hasReverse = hand.some(c => c.color === color && c.type === CARD_TYPES.REVERSE);
-                
-                if (hasDrawTwo) score += 15;
-                if (hasSkip) score += 10;
-                if (hasReverse) score += 5;
-            }
-
-            // Prefer colors with number cards (easier to play and can win with them)
-            const hasNumber = hand.some(c => c.color === color && c.type === CARD_TYPES.NUMBER);
-            if (hasNumber) score += 8;
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestColor = color;
+        if (result?.error) {
+            // Should never happen, but never let a bot stall the table.
+            console.warn(`[Room ${this.code}] Bot ${bot.name} action failed: ${result.error}`);
+            const fallback = this.hasDrawn ? this.pass(bot.id) : this.draw(bot.id);
+            if (fallback.error) {
+                this.advance(1);
+                this.sync();
             }
         }
-
-        return bestColor;
     }
 
-    shouldBotCallUno(hand, cardsToPlayCount) {
-        return hand.length === 1 && cardsToPlayCount >= 1;
+    // ------------------------------------------------------------ plumbing
+
+    record(entry) {
+        this.logSeq += 1;
+        const withMeta = { seq: this.logSeq, at: Date.now(), ...entry };
+        if (entry.playerId && !entry.name) {
+            withMeta.name = this.getPlayer(entry.playerId)?.name ?? 'Someone';
+        }
+        this.log.push(withMeta);
+        if (this.log.length > LOG_LIMIT) this.log.shift();
+        for (const player of this.players) player.socket?.emit('room:event', withMeta);
     }
 
-    calculateScores(winnerId = null) {
-        const resolvedWinnerId = winnerId || this.winner?.id;
-        
-        // Calculate hand values for ranking
-        const handValues = this.players.map(p => ({
-            id: p.id,
-            name: p.name,
-            handSize: p.hand.length,
-            // Points for tie-breaking (lower is better, except winner has 0)
-            points: p.hand.reduce((sum, card) => {
-                if (card.type === CARD_TYPES.NUMBER) return sum + card.value;
-                if (card.type === CARD_TYPES.WILD || card.type === CARD_TYPES.WILD_DRAW_FOUR || card.type === CARD_TYPES.CUSTOM_DRAW) return sum + 50;
-                return sum + 20;
-            }, 0)
-        }));
-
-        // Sort: winner first, then by hand size (asc), then by points (asc) as tiebreaker
-        return handValues.sort((a, b) => {
-            // Winner always comes first
-            if (a.id === resolvedWinnerId) return -1;
-            if (b.id === resolvedWinnerId) return 1;
-            // Then sort by hand size (fewer cards = better rank)
-            if (a.handSize !== b.handSize) return a.handSize - b.handSize;
-            // Then by point value as tiebreaker
-            return a.points - b.points;
-        });
+    later(fn, delay) {
+        const timer = setTimeout(() => {
+            this.timers.delete(timer);
+            if (!this.closed) fn();
+        }, delay);
+        this.timers.add(timer);
     }
 
-    broadcastGameState() {
-        const topCard = this.discardPile[this.discardPile.length - 1];
-        const currentPlayer = this.players[this.currentPlayerIndex];
+    clearTimers() {
+        for (const timer of this.timers) clearTimeout(timer);
+        this.timers.clear();
+        clearTimeout(this.botTimer);
+        this.botTimer = null;
+    }
 
-        // Send personalized state to each player
+    close() {
+        if (this.closed) return;
+        this.closed = true;
+        this.clearTimers();
+        for (const player of this.players) clearTimeout(player.graceTimer);
+        this.onClose(this);
+    }
+
+    /** Push fresh state to every connected player, persist, and wake bots. */
+    sync() {
+        if (this.closed) return;
         for (const player of this.players) {
-            const state = {
-                roomCode: this.roomCode,
-                currentPlayerId: currentPlayer?.id,
-                currentPlayerName: currentPlayer?.name,
-                direction: this.direction,
-                currentColor: this.currentColor,
-                topCard,
-                discardHistory: this.discardPile.slice(-3),
-                drawStack: this.drawStack,
-                deckCount: this.deck.length,
-                hand: player.hand,
-                hasDrawnThisTurn: this.hasDrawnThisTurn,
-                players: this.players.map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    cardCount: p.hand.length,
-                    isCurrentTurn: p.id === currentPlayer?.id
-                })),
-                canCallUno: player.hand.length === 1,
-                hasCalledUno: this.unoCalledBy.has(player.id),
-                playersWithOneCard: [],
-                isDealing: this.isDealing,
-                actionsLocked: this.isActionLocked()
-            };
-
-            player.socket.emit('gameState', state);
+            player.socket?.emit('room:state', this.viewFor(player));
         }
-
-        this.maybeHandleBotTurn();
+        this.onChange(this);
+        this.scheduleBot();
     }
 
-    toJSON() {
+    viewFor(viewer) {
+        const current = this.currentPlayer;
+        const inGame = this.phase !== PHASES.LOBBY;
+
         return {
-            roomCode: this.roomCode,
-            gameStarted: this.gameStarted,
-            deck: this.deck,
-            discardPile: this.discardPile,
-            currentPlayerIndex: this.currentPlayerIndex,
-            direction: this.direction,
-            currentColor: this.currentColor,
-            drawStack: this.drawStack,
-            unoCalledBy: Array.from(this.unoCalledBy),
-            winner: this.winner ? { id: this.winner.id, name: this.winner.name } : null,
-            hasDrawnThisTurn: this.hasDrawnThisTurn,
-            customCardConfig: this.customCardConfig,
-            startingCardCount: this.startingCardCount,
-            actionLockedUntil: this.actionLockedUntil,
-            rematchVotes: this.rematchVotes ? Array.from(this.rematchVotes.entries()) : null,
-            bannedPlayerIds: Array.from(this.bannedPlayerIds),
-            bannedPlayerNames: Array.from(this.bannedPlayerNames),
+            code: this.code,
+            phase: this.phase,
+            you: viewer.id,
+            hostId: this.hostId,
+            settings: this.settings,
             players: this.players.map(p => ({
                 id: p.id,
                 name: p.name,
-                hand: p.hand,
-                isHost: p.isHost,
                 isBot: p.isBot,
-                disconnected: true // Always disconnected on save/restore
-            }))
+                connected: p.connected,
+                cardCount: p.hand.length,
+                calledUno: p.calledUno
+            })),
+            game: inGame ? {
+                hand: viewer.hand,
+                currentPlayerId: current?.id ?? null,
+                direction: this.direction,
+                currentColor: this.currentColor,
+                discard: this.discard.slice(-4),
+                drawStack: this.drawStack,
+                deckCount: this.deck.length,
+                hasDrawn: this.hasDrawn,
+                dealing: this.dealing,
+                turnSeq: this.turnSeq
+            } : null,
+            results: this.results,
+            ready: this.phase === PHASES.FINISHED ? [...this.rematchReady] : [],
+            log: this.log.slice(-12)
         };
     }
 
-    static restore(state, io) {
-        const room = new GameRoom(state.roomCode, io);
-        room.gameStarted = state.gameStarted;
-        room.deck = state.deck;
-        room.discardPile = state.discardPile;
-        room.currentPlayerIndex = state.currentPlayerIndex;
-        room.direction = state.direction;
-        room.currentColor = state.currentColor;
-        room.drawStack = state.drawStack;
-        room.unoCalledBy = new Set(state.unoCalledBy);
-        room.winner = state.winner;
-        room.hasDrawnThisTurn = state.hasDrawnThisTurn || false;
-        room.customCardConfig = normalizeCustomCardConfig(state.customCardConfig);
-        room.startingCardCount = room.normalizeStartingCardCount(state.startingCardCount);
-        room.actionLockedUntil = 0;
-        room.rematchVotes = state.rematchVotes ? new Map(state.rematchVotes) : null;
-        room.bannedPlayerIds = new Set(state.bannedPlayerIds || []);
-        room.bannedPlayerNames = new Set(state.bannedPlayerNames || []);
-        room.players = state.players.map(p => ({
+    summary() {
+        return {
+            code: this.code,
+            host: this.getPlayer(this.hostId)?.name ?? 'Unknown',
+            playerCount: this.players.length,
+            maxPlayers: LIMITS.maxPlayers
+        };
+    }
+
+    // ------------------------------------------------------- persistence
+
+    toJSON() {
+        return {
+            version: SAVE_VERSION,
+            code: this.code,
+            phase: this.phase,
+            hostId: this.hostId,
+            settings: this.settings,
+            bannedTokens: [...this.bannedTokens],
+            players: this.players.map(({ id, token, name, isBot, hand, calledUno }) => ({ id, token, name, isBot, hand, calledUno })),
+            deck: this.deck,
+            discard: this.discard,
+            currentIndex: this.currentIndex,
+            direction: this.direction,
+            currentColor: this.currentColor,
+            drawStack: this.drawStack,
+            hasDrawn: this.hasDrawn,
+            turnSeq: this.turnSeq,
+            results: this.results,
+            rematchReady: [...this.rematchReady],
+            log: this.log,
+            logSeq: this.logSeq
+        };
+    }
+
+    static restore(data, options) {
+        if (data?.version !== SAVE_VERSION) return null;
+
+        const room = new GameRoom(data.code, options);
+        Object.assign(room, {
+            phase: data.phase,
+            hostId: data.hostId,
+            settings: normalizeSettings(data.settings),
+            bannedTokens: new Set(data.bannedTokens),
+            deck: data.deck,
+            discard: data.discard,
+            currentIndex: data.currentIndex,
+            direction: data.direction,
+            currentColor: data.currentColor,
+            drawStack: data.drawStack,
+            hasDrawn: data.hasDrawn,
+            turnSeq: data.turnSeq,
+            results: data.results,
+            rematchReady: new Set(data.rematchReady),
+            log: data.log ?? [],
+            logSeq: data.logSeq ?? 0
+        });
+        room.players = data.players.map(p => ({
             ...p,
-            isBot: !!p.isBot,
-            socket: { emit: () => {}, join: () => {}, leave: () => {} }, // Mock socket
-            disconnected: true
+            socket: null,
+            connected: p.isBot,
+            graceTimer: null
         }));
+        // Everyone is offline after a restart; give them time to come back.
+        for (const player of room.humans) room.startGraceTimer(player);
         return room;
     }
 }
+

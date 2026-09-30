@@ -1,0 +1,209 @@
+/*
+ * Cards scale entirely from --card-w. Inner sizes use container query units
+ * (cqw = 1% of the card's width) so every card size renders identically.
+ */
+.card {
+  --card-w: 88px;
+  --c: #555;
+  --c-deep: #333;
+  position: relative;
+  flex: none;
+  width: var(--card-w);
+  aspect-ratio: 2 / 3;
+  container-type: inline-size;
+  border-radius: calc(var(--card-w) * 0.11);
+  padding: calc(var(--card-w) * 0.055);
+  background: #fbfbfd;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.9) inset,
+    0 0 0 1px rgb(0 0 0 / 0.18),
+    0 calc(var(--card-w) * 0.04) calc(var(--card-w) * 0.12) rgb(0 0 0 / 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.card.c-red { --c: var(--uno-red); --c-deep: var(--uno-red-deep); }
+.card.c-yellow { --c: var(--uno-yellow); --c-deep: var(--uno-yellow-deep); }
+.card.c-green { --c: var(--uno-green); --c-deep: var(--uno-green-deep); }
+.card.c-blue { --c: var(--uno-blue); --c-deep: var(--uno-blue-deep); }
+.card.c-wild { --c: var(--uno-black); --c-deep: #000; }
+
+.card-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: calc(var(--card-w) * 0.075);
+  background:
+    radial-gradient(120% 80% at 20% 0%, rgb(255 255 255 / 0.22), transparent 55%),
+    linear-gradient(160deg, var(--c), var(--c-deep));
+  display: grid;
+  place-items: center;
+}
+
+.card-oval {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 78%;
+  height: 92%;
+  border-radius: 50%;
+  background: #fbfbfd;
+  transform: translate(-50%, -50%) rotate(28deg);
+  box-shadow: inset 0 0 0 0.6cqw rgb(0 0 0 / 0.08);
+}
+
+.card-center {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 58cqw;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--c);
+  -webkit-text-stroke: 0.05em #16161a;
+  paint-order: stroke fill;
+  text-shadow: 0.05em 0.05em 0 #16161a;
+  transform: translateX(-0.02em);
+}
+
+.card-center.is-plus {
+  font-size: 42cqw;
+}
+
+.card-center.is-69 {
+  text-decoration: underline;
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.08em;
+}
+
+.card-symbol {
+  position: relative;
+  width: 62cqw;
+  height: 62cqw;
+  fill: none;
+  stroke: var(--c);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(1.6cqw 1.6cqw 0 #16161a) drop-shadow(-0.6cqw -0.6cqw 0 #16161a) drop-shadow(0.6cqw -0.6cqw 0 #16161a) drop-shadow(-0.6cqw 0.6cqw 0 #16161a);
+}
+
+.card-corner {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 17cqw;
+  line-height: 1;
+  color: #fff;
+  -webkit-text-stroke: 0.06em rgb(0 0 0 / 0.55);
+  paint-order: stroke fill;
+}
+
+.card-corner.tl {
+  top: 6cqw;
+  left: 7cqw;
+}
+
+.card-corner.br {
+  bottom: 6cqw;
+  right: 7cqw;
+  transform: rotate(180deg);
+}
+
+.card-corner .card-symbol {
+  width: 17cqw;
+  height: 17cqw;
+  stroke: #fff;
+  stroke-width: 3.4;
+  filter: drop-shadow(0 0 0.6cqw rgb(0 0 0 / 0.6));
+}
+
+/* Wild cards: black face with the four-colour oval. */
+.card.c-wild .card-oval {
+  background: conic-gradient(from 0deg, var(--uno-blue) 0 25%, var(--uno-green) 0 50%, var(--uno-yellow) 0 75%, var(--uno-red) 0);
+  box-shadow: 0 0 0 1.4cqw #fbfbfd, inset 0 0 6cqw rgb(0 0 0 / 0.25);
+  width: 70%;
+  height: 84%;
+}
+
+.card.c-wild .card-center {
+  color: #fff;
+}
+
+.card.t-custom-draw .card-oval {
+  background: conic-gradient(from 45deg, #ff5ea8, #a855f7, #22d3ee, #34d399, #fcc419, #ff5ea8);
+}
+
+.card.t-custom-draw .card-face {
+  background:
+    radial-gradient(120% 80% at 20% 0%, rgb(168 85 247 / 0.35), transparent 60%),
+    linear-gradient(160deg, #1e1b2e, #07060c);
+}
+
+.corner-wild {
+  width: 13cqw;
+  height: 17cqw;
+  border-radius: 50%;
+  background: conic-gradient(var(--uno-blue) 0 25%, var(--uno-green) 0 50%, var(--uno-yellow) 0 75%, var(--uno-red) 0);
+  box-shadow: 0 0 0 1cqw #fff;
+  transform: rotate(28deg);
+}
+
+/* A wild on the pile shows the colour that was chosen for it. */
+.card.has-chosen-color {
+  box-shadow:
+    0 0 0 calc(var(--card-w) * 0.035) var(--chosen),
+    0 0 calc(var(--card-w) * 0.35) color-mix(in srgb, var(--chosen) 60%, transparent),
+    0 calc(var(--card-w) * 0.04) calc(var(--card-w) * 0.12) rgb(0 0 0 / 0.35);
+}
+
+/* ------------------------------------------------------------------ Back */
+.card-back {
+  background: #1b1c22;
+}
+
+.card-back .card-face {
+  background: radial-gradient(90% 70% at 50% 40%, #2a2b33, #0c0c10);
+}
+
+.card-back .card-oval {
+  background: var(--uno-red);
+  box-shadow: inset 0 -3cqw 8cqw rgb(0 0 0 / 0.25);
+  width: 72%;
+  height: 90%;
+}
+
+.card-logo {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 30cqw;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--uno-yellow);
+  -webkit-text-stroke: 0.07em #16161a;
+  paint-order: stroke fill;
+  text-shadow: 0.06em 0.06em 0 #16161a;
+  transform: rotate(-18deg);
+}
+
+/* Small card backs used in opponents' fans. */
+.mini-card {
+  width: 18px;
+  height: 26px;
+  flex: none;
+  border-radius: 4px;
+  background:
+    radial-gradient(ellipse 36% 42% at 50% 50%, var(--uno-red) 96%, transparent 100%),
+    #17181e;
+  border: 1.5px solid #2b2d36;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 0.45);
+}

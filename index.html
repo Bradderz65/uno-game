@@ -3,262 +3,387 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#1a1a2e">
-  <title>UNO - Multiplayer</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23073a2f'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='Arial Black,Arial,sans-serif' font-size='28' font-weight='900' fill='%23f0d177'%3EUNO%3C/text%3E%3C/svg%3E">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#0a0c14">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Play UNO with friends on your local network. No accounts, no installs.">
+  <title>UNO · Play with friends</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='4' width='44' height='56' rx='8' fill='%23e5383b'/%3E%3Cellipse cx='32' cy='32' rx='14' ry='24' transform='rotate(28 32 32)' fill='%23fff'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-family='Arial Black,Arial,sans-serif' font-size='24' font-weight='900' fill='%23e5383b'%3E1%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/src/styles.css">
-  <link rel="stylesheet" href="/src/animations.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 
 <body>
-  <div id="app">
-    <!-- Lobby Screen -->
-    <div id="lobby-screen" class="screen active">
-      <div class="lobby-container">
-        <h1 class="game-title">
-          <span class="letter red">U</span><span class="letter yellow">N</span><span class="letter green">O</span>
-        </h1>
-        <p class="subtitle">Multiplayer Card Game</p>
+  <!-- Icon sprite (Lucide-style, 24px stroke icons) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+      <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+      <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></symbol>
+      <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+      <symbol id="i-volume-off" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
+      <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16M16 16h5v5"/></symbol>
+      <symbol id="i-crown" viewBox="0 0 24 24"><path d="m2 7 4.5 10h11L22 7l-5.5 4L12 4l-4.5 7L2 7zM6 21h12"/></symbol>
+      <symbol id="i-offline" viewBox="0 0 24 24"><path d="m2 2 20 20M8.5 16.4a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 5.2-2.7M19 12.9a10 10 0 0 0-2-1.4M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.7 5M12 20h.01"/></symbol>
+      <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+      <symbol id="i-sort" viewBox="0 0 24 24"><path d="m3 16 4 4 4-4M7 20V4M21 8l-4-4-4 4M17 4v16"/></symbol>
+      <symbol id="i-draw" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
+      <symbol id="i-pass" viewBox="0 0 24 24"><path d="M5 4l10 8-10 8V4zM19 5v14"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.9 1 6.7 2.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+      <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17c0 .6-.5 1-1 1.2C7.9 18.8 7 20.2 7 22M14 14.7V17c0 .6.5 1 1 1.2 1.1.6 2 2 2 3.8M18 2H6v7a6 6 0 0 0 12 0V2z"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+      <symbol id="sym-skip" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6 18 18 6"/></symbol>
+      <symbol id="sym-reverse" viewBox="0 0 24 24"><path d="M4 9h13M13.5 4.5 18 9l-4.5 4.5M20 15H7M10.5 10.5 6 15l4.5 4.5"/></symbol>
+    </defs>
+  </svg>
 
-        <div id="join-section" class="lobby-section">
-          <label class="name-field" for="player-name">
-            <span class="name-field-label">Your name</span>
-            <input type="text" id="player-name" placeholder="Enter your name" maxlength="12" autocomplete="nickname" enterkeyhint="go">
-          </label>
-
-          <div class="button-group">
-            <button id="create-btn" class="btn btn-primary">
-              <span class="btn-icon">+</span>
-              Create Game
-            </button>
-            
-            <!-- Room List (Visible if games exist) -->
-            <div id="rooms-browser" class="rooms-browser">
-              <div class="rooms-header">
-                <h3>Available Games</h3>
-                <button id="refresh-rooms-btn" class="btn-icon-only" title="Refresh" aria-label="Refresh">↻</button>
-              </div>
-              <div id="rooms-list" class="rooms-list">
-                <div class="no-rooms">Searching for games...</div>
-              </div>
-            </div>
-
-            <!-- Advanced Join -->
-            <details class="advanced-join">
-              <summary>Advanced: Join by Code</summary>
-              <div class="join-row">
-                <input type="text" id="room-code" placeholder="ROOM CODE" maxlength="4" autocomplete="off">
-                <button id="join-btn" class="btn btn-secondary">Join</button>
-              </div>
-            </details>
-          </div>
-        </div>
-
-        <div id="waiting-section" class="lobby-section hidden">
-          <div class="room-info">
-            <span class="room-label">Room Code</span>
-            <span id="display-room-code" class="room-code">----</span>
-          </div>
-
-          <div class="invite-card" aria-label="Network invite">
-            <div id="invite-qr" class="invite-qr" aria-live="polite"></div>
-            <div class="invite-link-row">
-              <input type="text" id="invite-url" readonly aria-label="Invite link">
-              <button id="copy-invite-btn" class="btn btn-secondary" type="button">Copy</button>
-            </div>
-          </div>
-
-          <div class="connected-players-section">
-            <div class="section-header">
-              <span class="section-title">Connected Players</span>
-              <span class="player-count" id="player-count">0/10</span>
-            </div>
-            <div class="players-list" id="players-list">
-              <!-- Players will be inserted here -->
-            </div>
-          </div>
-
-          <div id="game-settings" class="game-settings hidden">
-             <div class="setting-control-row">
-               <label for="starting-cards">Starting Cards</label>
-               <div class="number-input starting-cards-control">
-                 <button id="dec-cards" class="btn-number" type="button" aria-label="Decrease starting cards">-</button>
-                 <input type="number" id="starting-cards" value="7" min="1" max="20">
-                 <button id="inc-cards" class="btn-number" type="button" aria-label="Increase starting cards">+</button>
-               </div>
-             </div>
-
-             <label class="custom-card-toggle" for="custom-card-enabled">
-               <input type="checkbox" id="custom-card-enabled">
-               Custom Card
-             </label>
-
-             <div class="custom-card-settings" id="custom-card-settings">
-               <div class="setting-control-row">
-                 <label for="custom-card-draw">Draw Amount</label>
-                 <div class="number-input">
-                   <button id="dec-custom-draw" class="btn-number" type="button" aria-label="Decrease custom draw amount">-</button>
-                   <input type="number" id="custom-card-draw" value="8" min="1" max="20">
-                   <button id="inc-custom-draw" class="btn-number" type="button" aria-label="Increase custom draw amount">+</button>
-                 </div>
-               </div>
-               <div class="setting-control-row">
-                 <label for="custom-card-count">Cards in Deck</label>
-                 <div class="number-input">
-                   <button id="dec-custom-count" class="btn-number" type="button" aria-label="Decrease custom cards in deck">-</button>
-                   <input type="number" id="custom-card-count" value="2" min="1" max="8">
-                   <button id="inc-custom-count" class="btn-number" type="button" aria-label="Increase custom cards in deck">+</button>
-                 </div>
-               </div>
-             </div>
-          </div>
-
-          <button id="add-bot-btn" class="btn btn-secondary btn-full hidden">
-            Add Bot
-          </button>
-
-          <button id="start-btn" class="btn btn-primary btn-large hidden">
-            Start Game
-          </button>
-          <p id="waiting-text" class="waiting-text">Waiting for host to start...</p>
-          <button id="leave-lobby-btn" class="btn btn-secondary btn-full leave-btn">
-            Leave Room
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Game Screen -->
-    <div id="game-screen" class="screen">
-      <div class="game-header">
-        <div class="game-info">
-          <div class="current-turn">
-            <span class="turn-label">Turn:</span>
-            <span id="current-player-name">---</span>
-          </div>
-          <div class="direction-indicator" id="direction-indicator">↻</div>
-        </div>
-        <div class="header-right">
-          <button id="leave-game-btn" class="btn-icon-only" title="Leave Game" aria-label="Leave Game">Exit</button>
-          <button id="sound-toggle" class="btn-icon-only" title="Toggle Sound" aria-label="Toggle Sound">Sound</button>
-          <div class="room-badge" id="game-room-code">----</div>
-        </div>
-      </div>
-
-      <div class="game-area">
-        <!-- Other Players -->
-        <div class="opponents-area" id="opponents-area">
-          <!-- Opponent cards will be inserted here -->
-        </div>
-
-        <!-- Center Play Area -->
-        <div class="center-area">
-          <div class="deck-area">
-            <div class="card-stack deck" id="draw-pile">
-              <div class="card card-back">
-                <div class="card-back-design">UNO</div>
-              </div>
-              <span class="deck-count" id="deck-count">0</span>
-            </div>
-
-            <div class="card-stack discard" id="discard-pile">
-              <!-- Top card will be inserted here -->
-            </div>
-          </div>
-
-          <div class="draw-stack-indicator hidden" id="draw-stack">
-            <span>+<span id="draw-stack-count">0</span></span>
-          </div>
-        </div>
-
-        <!-- Player Hand -->
-        <div class="player-hand-area">
-          <div class="hand-container" id="player-hand">
-            <!-- Player's cards will be inserted here -->
-          </div>
-
-          <div class="hand-controls-row">
-            <div class="turn-action-status" id="turn-action-status" aria-live="polite">Waiting for turn</div>
-            <div class="hand-toolbar" aria-label="Hand controls">
-              <label class="auto-sort-toggle" for="auto-sort-toggle" title="Automatically keep your hand grouped">
-                <input type="checkbox" id="auto-sort-toggle">
-                Auto
-              </label>
-            </div>
-          </div>
-
-          <div class="action-buttons">
-            <button class="btn btn-action" id="draw-btn" data-action="draw">
-              <span class="btn-icon" id="turn-action-icon">↓</span>
-              <span id="turn-action-label">Draw</span>
-            </button>
-            <button class="btn btn-primary disabled" id="play-btn" disabled>
-              Play<span class="play-count"> (<span id="selected-count">0</span>)</span>
-            </button>
-            <button class="btn btn-uno hidden" id="uno-btn">
-              UNO!
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Catch UNO Panel -->
-      <div class="catch-panel hidden" id="catch-panel">
-        <span class="catch-label">Catch!</span>
-        <div id="catch-buttons">
-          <!-- Catch buttons will be inserted here -->
-        </div>
-      </div>
-    </div>
-
-    <!-- Color Picker Modal -->
-    <div class="modal hidden" id="color-modal">
-      <div class="modal-content color-picker">
-        <h3>Choose a Color</h3>
-        <div class="color-options">
-          <button class="color-btn red" data-color="red" aria-label="Red"></button>
-          <button class="color-btn yellow" data-color="yellow" aria-label="Yellow"></button>
-          <button class="color-btn green" data-color="green" aria-label="Green"></button>
-          <button class="color-btn blue" data-color="blue" aria-label="Blue"></button>
-        </div>
-        <button type="button" class="btn btn-secondary" id="color-cancel-btn">Cancel</button>
-      </div>
-    </div>
-
-    <!-- Game Over Modal -->
-    <div class="modal hidden" id="gameover-modal">
-      <div class="modal-content gameover">
-        <h2 id="winner-text">🎉 Winner! 🎉</h2>
-        <div class="scores" id="scores-list">
-          <!-- Scores will be inserted here -->
-        </div>
-        <button class="btn btn-primary" id="play-again-btn">Play Again</button>
-      </div>
-    </div>
-
-    <!-- Rematch Modal -->
-    <div class="modal hidden" id="rematch-modal">
-      <div class="modal-content rematch">
-        <h2>Continue?</h2>
-        <p id="rematch-status">Waiting for players...</p>
-        <div class="rematch-votes" id="rematch-votes">
-          <!-- Vote status will be inserted here -->
-        </div>
-        <div class="rematch-actions">
-          <button class="btn btn-primary" id="rematch-yes-btn">Continue</button>
-          <button class="btn btn-secondary" id="rematch-no-btn">End Game</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Toast Notifications -->
-    <div class="toast-container" id="toast-container"></div>
+  <div class="connection-banner" id="connection-banner" hidden role="status">
+    <span class="spinner" aria-hidden="true"></span>
+    <span id="connection-text">Reconnecting…</span>
   </div>
 
+  <div id="app">
+    <!-- ================================================================ Home -->
+    <section id="home-screen" class="screen home" data-screen="home" hidden>
+      <div class="home-hero">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span class="brand-tile red">U</span><span class="brand-tile yellow">N</span><span class="brand-tile green">O</span>
+          </div>
+          <h1 class="brand-title">Play UNO with friends</h1>
+          <p class="brand-lede">Real-time multiplayer on your local network. No accounts and no installs — just share a code.</p>
+        </div>
+        <div class="hero-cards" id="hero-cards" aria-hidden="true"></div>
+        <ul class="hero-features">
+          <li><svg class="icon"><use href="#i-users"/></svg>Up to 10 players</li>
+          <li><svg class="icon"><use href="#i-bot"/></svg>Smart bots</li>
+          <li><svg class="icon"><use href="#i-sliders"/></svg>House rules</li>
+        </ul>
+      </div>
+
+      <div class="home-panel panel">
+        <form class="field" id="name-form" autocomplete="off" onsubmit="return false">
+          <label class="field-label" for="player-name">Your name</label>
+          <input class="input input-lg" type="text" id="player-name" placeholder="What should we call you?" maxlength="16" autocomplete="nickname" enterkeyhint="go" spellcheck="false">
+        </form>
+
+        <button id="create-btn" class="btn btn-primary btn-lg btn-block" type="button">
+          <svg class="icon"><use href="#i-plus"/></svg>
+          Create a room
+        </button>
+
+        <div class="divider"><span>or join a room</span></div>
+
+        <form class="join-row" id="join-form" onsubmit="return false">
+          <label class="sr-only" for="room-code">Room code</label>
+          <input class="input input-code" type="text" id="room-code" placeholder="CODE" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="join">
+          <button id="join-btn" class="btn btn-secondary" type="submit">Join</button>
+        </form>
+
+        <div class="rooms">
+          <div class="rooms-head">
+            <h2 class="eyebrow">Open rooms</h2>
+            <span class="live-dot" title="Updates automatically">Live</span>
+          </div>
+          <ul class="rooms-list" id="rooms-list" aria-live="polite">
+            <li class="rooms-empty">Looking for games…</li>
+          </ul>
+        </div>
+
+        <button class="link-btn" type="button" data-open-rules>
+          <svg class="icon"><use href="#i-help"/></svg>How to play
+        </button>
+      </div>
+    </section>
+
+    <!-- =============================================================== Lobby -->
+    <section id="lobby-screen" class="screen lobby" data-screen="lobby" hidden>
+      <header class="lobby-header">
+        <button class="btn btn-ghost" type="button" id="lobby-leave-btn">
+          <svg class="icon"><use href="#i-back"/></svg><span>Leave</span>
+        </button>
+        <div class="lobby-title">
+          <span class="eyebrow">Room code</span>
+          <button class="room-code" id="lobby-code" type="button" title="Copy room code">----</button>
+        </div>
+        <button class="btn btn-ghost btn-icon" type="button" data-open-rules aria-label="How to play">
+          <svg class="icon"><use href="#i-help"/></svg>
+        </button>
+      </header>
+
+      <div class="lobby-grid">
+        <div class="panel lobby-players">
+          <div class="panel-head">
+            <h2 class="panel-title"><svg class="icon"><use href="#i-users"/></svg>Players</h2>
+            <span class="pill" id="lobby-count">0 / 10</span>
+          </div>
+          <ul class="player-list" id="lobby-players"></ul>
+          <button class="btn btn-secondary btn-block" type="button" id="add-bot-btn" hidden>
+            <svg class="icon"><use href="#i-bot"/></svg>Add a bot
+          </button>
+        </div>
+
+        <div class="lobby-side">
+          <div class="panel invite">
+            <div class="panel-head">
+              <h2 class="panel-title"><svg class="icon"><use href="#i-link"/></svg>Invite friends</h2>
+            </div>
+            <div class="invite-body">
+              <div class="qr" id="invite-qr" aria-live="polite"></div>
+              <div class="invite-copy">
+                <p class="muted">Scan with a phone on the same Wi-Fi, or share the link.</p>
+                <div class="copy-field">
+                  <input class="input" type="text" id="invite-url" readonly aria-label="Invite link">
+                  <button class="btn btn-secondary btn-icon" type="button" id="copy-invite-btn" aria-label="Copy invite link">
+                    <svg class="icon"><use href="#i-copy"/></svg>
+                  </button>
+                </div>
+                <button class="btn btn-secondary btn-block" type="button" id="share-invite-btn" hidden>
+                  <svg class="icon"><use href="#i-share"/></svg>Share invite
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel settings">
+            <div class="panel-head">
+              <h2 class="panel-title"><svg class="icon"><use href="#i-sliders"/></svg>House rules</h2>
+              <span class="pill pill-muted" id="settings-lock" hidden>Host only</span>
+            </div>
+            <div class="setting">
+              <div class="setting-text">
+                <span class="setting-name">Starting hand</span>
+                <span class="setting-hint">Cards dealt to each player</span>
+              </div>
+              <div class="stepper" data-setting="startingCards" data-min="1" data-max="20">
+                <button type="button" class="stepper-btn" data-step="-1" aria-label="Fewer starting cards">−</button>
+                <output class="stepper-value">7</output>
+                <button type="button" class="stepper-btn" data-step="1" aria-label="More starting cards">+</button>
+              </div>
+            </div>
+            <div class="setting">
+              <div class="setting-text">
+                <span class="setting-name">Mega draw card</span>
+                <span class="setting-hint">Adds custom wild draw cards to the deck</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="custom-enabled">
+                <span class="switch-track" aria-hidden="true"></span>
+                <span class="sr-only">Enable mega draw card</span>
+              </label>
+            </div>
+            <div class="setting-group" id="custom-settings">
+              <div class="setting-group-inner">
+                <div class="setting">
+                  <div class="setting-text"><span class="setting-name">Draw amount</span></div>
+                  <div class="stepper" data-setting="customCard.drawAmount" data-min="1" data-max="20">
+                    <button type="button" class="stepper-btn" data-step="-1" aria-label="Lower draw amount">−</button>
+                    <output class="stepper-value">8</output>
+                    <button type="button" class="stepper-btn" data-step="1" aria-label="Higher draw amount">+</button>
+                  </div>
+                </div>
+                <div class="setting">
+                  <div class="setting-text"><span class="setting-name">Copies in deck</span></div>
+                  <div class="stepper" data-setting="customCard.count" data-min="1" data-max="8">
+                    <button type="button" class="stepper-btn" data-step="-1" aria-label="Fewer copies">−</button>
+                    <output class="stepper-value">2</output>
+                    <button type="button" class="stepper-btn" data-step="1" aria-label="More copies">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="lobby-footer">
+        <p class="lobby-hint" id="lobby-hint">Waiting for the host to start…</p>
+        <button class="btn btn-primary btn-lg" type="button" id="start-btn" hidden>
+          Start game
+          <svg class="icon"><use href="#i-play"/></svg>
+        </button>
+      </footer>
+    </section>
+
+    <!-- ================================================================ Game -->
+    <section id="game-screen" class="screen game" data-screen="game" hidden>
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn btn-ghost btn-icon" type="button" id="game-leave-btn" aria-label="Leave game">
+            <svg class="icon"><use href="#i-logout"/></svg>
+          </button>
+          <span class="room-chip" id="game-code" title="Room code">----</span>
+        </div>
+        <div class="turn-pill" id="turn-pill" aria-live="polite">
+          <span class="turn-dot" aria-hidden="true"></span>
+          <span id="turn-text">Dealing…</span>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-ghost btn-icon" type="button" data-open-rules aria-label="How to play">
+            <svg class="icon"><use href="#i-help"/></svg>
+          </button>
+          <button class="btn btn-ghost btn-icon" type="button" id="sound-btn" aria-label="Mute sound" aria-pressed="false">
+            <svg class="icon"><use href="#i-volume"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="table-area" id="table-area">
+        <div class="seats" id="seats"></div>
+
+        <div class="table" id="table">
+          <div class="table-felt" aria-hidden="true"></div>
+          <div class="piles">
+            <div class="direction-ring" id="direction-ring" aria-hidden="true">
+              <svg viewBox="0 0 300 200" preserveAspectRatio="none">
+                <ellipse class="ring-track" cx="150" cy="100" rx="144" ry="94"/>
+                <path class="ring-flow" d="M150 6a144 94 0 1 1-.01 0"/>
+                <g class="ring-arrows"><path d="M141 0l11 6-11 6M159 188l-11 6 11 6M0 109l6-11 6 11M300 91l-6 11-6-11"/></g>
+              </svg>
+            </div>
+            <button class="pile draw-pile" id="draw-pile" type="button" aria-label="Draw pile">
+              <span class="pile-stack" aria-hidden="true"></span>
+              <span class="deck-count" id="deck-count">0</span>
+            </button>
+            <div class="pile discard-pile" id="discard-pile" aria-live="polite"></div>
+          </div>
+          <div class="table-caption">
+            <span class="color-chip" id="color-chip"><span class="swatch"></span><span id="color-name">—</span></span>
+            <span class="stack-chip" id="stack-chip" hidden>+0</span>
+          </div>
+          <p class="last-action" id="last-action" aria-live="polite"></p>
+        </div>
+
+        <ol class="feed" id="feed" aria-label="Recent moves"></ol>
+      </main>
+
+      <footer class="dock" id="dock">
+        <div class="dock-bar">
+          <p class="dock-status" id="dock-status">Waiting…</p>
+          <div class="dock-tools">
+            <button class="btn btn-ghost btn-sm" type="button" id="sort-btn" aria-pressed="false" title="Auto-sort your hand (S)">
+              <svg class="icon"><use href="#i-sort"/></svg><span>Sort</span>
+            </button>
+          </div>
+        </div>
+        <div class="hand-wrap">
+          <div class="hand" id="hand" role="listbox" aria-label="Your hand" aria-multiselectable="true"></div>
+        </div>
+        <div class="dock-actions">
+          <button class="btn btn-secondary btn-action" type="button" id="draw-btn" data-action="draw">
+            <svg class="icon" id="draw-icon"><use href="#i-draw"/></svg>
+            <span id="draw-label">Draw</span>
+          </button>
+          <button class="btn btn-uno" type="button" id="uno-btn" hidden>UNO!</button>
+          <button class="btn btn-primary btn-action" type="button" id="play-btn" disabled>
+            <span id="play-label">Play</span>
+            <svg class="icon"><use href="#i-play"/></svg>
+          </button>
+        </div>
+      </footer>
+
+      <button class="btn btn-primary results-reopen" type="button" id="results-reopen" hidden>
+        <svg class="icon"><use href="#i-trophy"/></svg>Results
+      </button>
+    </section>
+  </div>
+
+  <!-- ============================================================= Dialogs -->
+  <dialog class="dialog color-dialog" id="color-dialog" aria-labelledby="color-title">
+    <form method="dialog" class="dialog-body">
+      <h2 class="dialog-title" id="color-title">Pick a colour</h2>
+      <p class="dialog-sub muted">Everyone must follow the colour you choose.</p>
+      <div class="color-grid">
+        <button class="color-option red" value="red" type="submit"><span>Red</span><kbd>1</kbd></button>
+        <button class="color-option yellow" value="yellow" type="submit"><span>Yellow</span><kbd>2</kbd></button>
+        <button class="color-option green" value="green" type="submit"><span>Green</span><kbd>3</kbd></button>
+        <button class="color-option blue" value="blue" type="submit"><span>Blue</span><kbd>4</kbd></button>
+      </div>
+      <button class="btn btn-ghost btn-block" value="" type="submit">Cancel</button>
+    </form>
+  </dialog>
+
+  <dialog class="dialog confirm-dialog" id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog" class="dialog-body">
+      <h2 class="dialog-title" id="confirm-title">Are you sure?</h2>
+      <p class="dialog-sub muted" id="confirm-text"></p>
+      <div class="dialog-actions">
+        <button class="btn btn-secondary" value="cancel" type="submit" id="confirm-cancel">Cancel</button>
+        <button class="btn btn-danger" value="ok" type="submit" id="confirm-ok">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog results-dialog" id="results-dialog" aria-labelledby="results-title">
+    <div class="dialog-body">
+      <div class="results-hero">
+        <div class="results-trophy" aria-hidden="true"><svg class="icon"><use href="#i-trophy"/></svg></div>
+        <h2 class="dialog-title" id="results-title">Game over</h2>
+        <p class="dialog-sub muted" id="results-sub"></p>
+      </div>
+      <ol class="standings" id="standings"></ol>
+      <p class="ready-status" id="ready-status"></p>
+      <div class="dialog-actions results-actions">
+        <button class="btn btn-ghost" type="button" id="results-peek"><svg class="icon"><use href="#i-eye"/></svg>View table</button>
+        <button class="btn btn-secondary" type="button" id="results-lobby" hidden>Back to lobby</button>
+        <button class="btn btn-secondary" type="button" id="results-leave">Leave</button>
+        <button class="btn btn-primary" type="button" id="results-ready">Play again</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="dialog rules-dialog" id="rules-dialog" aria-labelledby="rules-title">
+    <div class="dialog-body">
+      <div class="dialog-head">
+        <h2 class="dialog-title" id="rules-title">How to play</h2>
+        <form method="dialog"><button class="btn btn-ghost btn-icon" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button></form>
+      </div>
+      <div class="rules">
+        <section>
+          <h3>The basics</h3>
+          <p>Match the top card by <strong>colour</strong>, <strong>number</strong> or <strong>symbol</strong>. Wilds can go on anything. First to empty their hand wins.</p>
+        </section>
+        <section>
+          <h3>House rules at this table</h3>
+          <ul>
+            <li><strong>Play multiples.</strong> Select identical cards (e.g. every 7) and play them together. The last card you pick ends up on top.</li>
+            <li><strong>Stack draws.</strong> Any +2, +4 or mega draw can be stacked on another. The next player who can't stack draws the whole pile.</li>
+            <li><strong>Must play if you can.</strong> You may only draw when nothing in your hand fits. After drawing, play if you can — otherwise pass.</li>
+            <li><strong>Finish on a number.</strong> Your last card can't be an action or wild card.</li>
+            <li><strong>Call UNO.</strong> When you're down to one card, press <em>UNO!</em> before playing it — or take two penalty cards.</li>
+            <li><strong>Heads up.</strong> With two players, Skip and Reverse both give you another turn.</li>
+          </ul>
+        </section>
+        <section class="rules-keys">
+          <h3>Controls</h3>
+          <ul>
+            <li>Tap cards to select, then <strong>Play</strong>. Double-tap a card to play it straight away.</li>
+            <li>Press and hold a card to drag it into a new spot.</li>
+            <li class="keys-only"><kbd>Enter</kbd> play · <kbd>D</kbd> draw / pass · <kbd>U</kbd> UNO · <kbd>S</kbd> sort · <kbd>Esc</kbd> clear</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="assertive"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
   <script type="module" src="/src/main.js"></script>
 </body>
 

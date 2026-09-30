@@ -1,0 +1,82 @@
+:root {
+  /* Surfaces */
+  --bg: #080a12;
+  --bg-raised: #0f1220;
+  --surface: rgb(255 255 255 / 0.045);
+  --surface-strong: rgb(255 255 255 / 0.08);
+  --surface-hover: rgb(255 255 255 / 0.11);
+  --border: rgb(255 255 255 / 0.09);
+  --border-strong: rgb(255 255 255 / 0.16);
+  --overlay: rgb(4 5 10 / 0.72);
+
+  /* Text */
+  --text: #f4f5fb;
+  --text-muted: #9aa0b8;
+  --text-faint: #646a84;
+  --text-inverse: #0a0c14;
+
+  /* Brand & feedback */
+  --accent: #f4f5fb;
+  --accent-contrast: #0a0c14;
+  --focus: #8ab4ff;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f43f5e;
+
+  /* Card colours (tuned to stay vivid on dark backgrounds) */
+  --uno-red: #e5383b;
+  --uno-yellow: #fcc419;
+  --uno-green: #2fb344;
+  --uno-blue: #1c7ed6;
+  --uno-black: #15161c;
+  --uno-red-deep: #a4161a;
+  --uno-yellow-deep: #d99e0b;
+  --uno-green-deep: #1f7a2f;
+  --uno-blue-deep: #1459a0;
+
+  /* The active colour on the table; JS swaps this per turn. */
+  --table-color: #6b7394;
+
+  /* Type */
+  --font-ui: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Outfit', var(--font-ui);
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: clamp(1.35rem, 1.1rem + 1vw, 1.75rem);
+  --text-2xl: clamp(2rem, 1.4rem + 2.6vw, 3.5rem);
+
+  /* Shape */
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  /* Depth */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow: 0 10px 30px -10px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.25);
+  --shadow-lg: 0 30px 80px -20px rgb(0 0 0 / 0.75);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur: 240ms;
+  --dur-slow: 420ms;
+
+  /* Layout */
+  --gutter: clamp(12px, 3vw, 28px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur: 1ms;
+    --dur-slow: 1ms;
+  }
+}
