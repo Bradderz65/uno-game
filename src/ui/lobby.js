@@ -1,6 +1,7 @@
 import { LIMITS } from '../../shared/rules.js';
 import { $, $$, h, icon, avatar } from '../lib/dom.js';
-import { createQrSvg } from '../qr-code.js';
+import { getShareUrl } from '../lib/invite.js';
+import { styledQrSvg } from './qr.js';
 import { confirmDialog } from './dialogs.js';
 import { toast } from './toast.js';
 
@@ -150,10 +151,10 @@ export class LobbyScreen {
     async renderInvite(code) {
         if (this.inviteFor === code) return;
         this.inviteFor = code;
-        const url = await getInviteUrl(code);
+        const url = await getShareUrl(code);
         $('#invite-url').value = url;
         try {
-            $('#invite-qr').innerHTML = createQrSvg(url);
+            $('#invite-qr').innerHTML = styledQrSvg(url, { label: `QR code to join room ${code}` });
         } catch {
             $('#invite-qr').textContent = 'QR unavailable';
         }
@@ -219,25 +220,4 @@ function writePath(obj, path, value) {
     for (const key of keys.slice(0, -1)) target = target[key] ??= {};
     target[keys.at(-1)] = value;
     return obj;
-}
-
-async function getInviteUrl(code) {
-    const fallback = new URL(location.href);
-    fallback.search = '';
-    fallback.hash = '';
-    fallback.searchParams.set('room', code);
-
-    // On localhost the page URL is useless to other devices, so ask the server for its LAN address.
-    if (!['localhost', '127.0.0.1', '::1'].includes(location.hostname)) return fallback.toString();
-    try {
-        const response = await fetch('/api/network-url');
-        if (!response.ok) throw new Error(String(response.status));
-        const { url } = await response.json();
-        const networkUrl = new URL(url);
-        if (location.port && location.port !== networkUrl.port) networkUrl.port = location.port;
-        networkUrl.searchParams.set('room', code);
-        return networkUrl.toString();
-    } catch {
-        return fallback.toString();
-    }
 }

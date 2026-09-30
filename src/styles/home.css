@@ -2,14 +2,14 @@
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: clamp(28px, 5vw, 56px);
-  max-width: 1180px;
+  gap: clamp(20px, 4vw, 48px);
+  max-width: 1120px;
   margin: 0 auto;
 }
 
 @media (min-width: 960px) {
   .home {
-    grid-template-columns: 1.1fr 0.9fr;
+    grid-template-columns: 1fr minmax(400px, 440px);
     align-items: center;
     justify-items: stretch;
   }
@@ -18,7 +18,7 @@
 /* ------------------------------------------------------------------ Hero */
 .home-hero {
   display: grid;
-  gap: clamp(20px, 3vw, 32px);
+  gap: clamp(20px, 3vw, 36px);
   justify-items: center;
   text-align: center;
   width: 100%;
@@ -85,19 +85,23 @@
 }
 
 .brand-lede {
-  max-width: 44ch;
+  max-width: 38ch;
   font-size: var(--text-lg);
   color: var(--text-muted);
 }
 
+.brand .link-btn {
+  margin-top: 2px;
+}
+
 .hero-cards {
   position: relative;
-  width: min(100%, 460px);
-  height: clamp(150px, 26vw, 240px);
+  width: min(100%, 440px);
+  height: clamp(150px, 24vw, 230px);
 }
 
 .hero-cards .card {
-  --card-w: clamp(84px, 14vw, 136px);
+  --card-w: clamp(84px, 13vw, 128px);
   position: absolute;
   left: 50%;
   bottom: 0;
@@ -119,55 +123,43 @@
   }
 }
 
-.hero-features {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: inherit;
-  gap: 10px 18px;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
-
-.hero-features li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.hero-features .icon {
-  color: var(--text);
-}
-
-@media (max-width: 959px) {
-  .hero-features {
-    justify-content: center;
+/* Phones: a compact header so the menu sits right under it. */
+@media (max-width: 640px) {
+  .brand {
+    gap: 10px;
   }
-}
 
-@media (max-width: 540px) {
+  .brand-tile {
+    width: 36px;
+    height: 42px;
+    font-size: 22px;
+  }
+
+  .brand-title {
+    max-width: none;
+    font-size: clamp(1.75rem, 8vw, 2.25rem);
+  }
+
   .brand-lede,
-  .hero-features {
+  .hero-cards {
     display: none;
   }
-
-  .hero-cards {
-    height: 130px;
-  }
-
-  .hero-cards .card {
-    --card-w: 76px;
-  }
 }
 
-@media (max-height: 560px) and (orientation: landscape) {
+/* Landscape phones. The min-width keeps portrait phones out when the keyboard shrinks the viewport. */
+@media (max-height: 560px) and (min-width: 600px) and (orientation: landscape) {
   .home {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr minmax(0, 420px);
     align-items: center;
   }
 
-  .hero-cards,
-  .hero-features {
+  .home-hero {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .brand-lede,
+  .hero-cards {
     display: none;
   }
 }
@@ -175,7 +167,7 @@
 /* ----------------------------------------------------------------- Panel */
 .home-panel {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   width: 100%;
   max-width: 440px;
   justify-self: center;
@@ -203,6 +195,7 @@
 }
 
 .rooms {
+  animation: screen-in var(--dur) var(--ease-out);
   display: grid;
   gap: 10px;
 }
@@ -247,15 +240,6 @@
   scrollbar-width: thin;
 }
 
-.rooms-empty {
-  padding: 18px;
-  text-align: center;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius);
-  color: var(--text-faint);
-  font-size: var(--text-sm);
-}
-
 .room-row {
   display: flex;
   align-items: center;
@@ -294,6 +278,147 @@
   color: var(--text-muted);
 }
 
-.home-panel > .link-btn {
+/* ------------------------------------------------------- Scan to join */
+.share {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 4px calc(-1 * var(--panel-pad, 20px)) calc(-1 * var(--panel-pad, 20px));
+  padding: 16px var(--panel-pad, 20px);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: rgb(0 0 0 / 0.18);
+}
+
+.share-qr {
+  position: relative;
+  flex: none;
+  width: 92px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  cursor: zoom-in;
+  box-shadow: 0 12px 28px -14px rgb(0 0 0 / 0.9);
+  transition: transform var(--dur) var(--ease-spring);
+}
+
+.share-qr:hover {
+  transform: scale(1.05) rotate(-2deg);
+}
+
+.share-qr:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.share-qr-code {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  color: #666;
+  font-size: var(--text-xs);
+}
+
+.share-qr-code svg,
+.qr-large svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.qr-skeleton {
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: linear-gradient(100deg, #eceef3 30%, #f8f9fb 50%, #eceef3 70%) 0 0 / 300% 100%;
+  animation: qr-shimmer 1.4s linear infinite;
+}
+
+@keyframes qr-shimmer {
+  to { background-position: -150% 0; }
+}
+
+.share-copy {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.share-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.share-title .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--success);
+}
+
+.share-text {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.share-link {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+  padding: 2px 2px 2px 10px;
+  border-radius: var(--radius-sm);
+  background: rgb(0 0 0 / 0.28);
+  border: 1px solid var(--border);
+}
+
+.share-url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  user-select: all;
+}
+
+.share.is-offline .share-title .icon {
+  color: var(--warning);
+}
+
+/* ------------------------------------------------------------ QR dialog */
+.qr-dialog {
+  width: min(calc(100vw - 24px), 460px);
+}
+
+.qr-large {
+  width: min(100%, 58dvh, 380px);
+  aspect-ratio: 1;
   justify-self: center;
+  padding: 10px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 60px -24px rgb(0 0 0 / 0.9);
+}
+
+.qr-large-url {
+  text-align: center;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.qr-large-hint {
+  text-align: center;
+  font-size: var(--text-sm);
+  margin-top: -6px;
 }

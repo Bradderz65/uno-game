@@ -1,6 +1,9 @@
 import { $, h, icon } from '../lib/dom.js';
+import { getShareUrl, isLocalOnly } from '../lib/invite.js';
 import { prefs } from '../lib/storage.js';
 import { renderCard } from './cards.js';
+import { enableBackdropClose } from './dialogs.js';
+import { styledQrSvg } from './qr.js';
 import { toast } from './toast.js';
 
 const ROOM_POLL_MS = 3000;
@@ -41,6 +44,11 @@ export class HomeScreen {
             this.codeInput.classList.remove('is-invalid');
         });
         this.nameInput.addEventListener('input', () => this.nameInput.classList.remove('is-invalid'));
+
+        this.shareUrl = null;
+        enableBackdropClose($('#qr-dialog'));
+        $('#share-qr').addEventListener('click', () => this.shareUrl && $('#qr-dialog').showModal());
+        $('#share-copy-btn').addEventListener('click', () => this.copyShareUrl());
     }
 
     renderHeroCards() {
@@ -56,6 +64,7 @@ export class HomeScreen {
 
     show() {
         this.el.hidden = false;
+        this.renderShare();
         this.refreshRooms();
         clearInterval(this.pollTimer);
         this.pollTimer = setInterval(() => this.refreshRooms(), ROOM_POLL_MS);
@@ -111,6 +120,41 @@ export class HomeScreen {
         }
     }
 
+    /** Fill the "scan to join" card with a QR code for this server's network address. */
+    async renderShare() {
+        if (this.shareUrl) return;
+        const url = await getShareUrl();
+        this.shareUrl = url;
+        const display = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+        $('#share-url').textContent = display;
+        $('#qr-large-url').textContent = display;
+        if (isLocalOnly(url)) {
+            $('#share-card').classList.add('is-offline');
+            $('#share-text').textContent = 'Connect this device to Wi-Fi so others can scan in.';
+        }
+
+        try {
+            const svg = styledQrSvg(url, { label: `QR code for ${display}` });
+            $('#share-qr-code').innerHTML = svg;
+            $('#qr-large').innerHTML = svg;
+        } catch {
+            $('#share-qr-code').textContent = 'QR unavailable';
+        }
+    }
+
+    async copyShareUrl() {
+        if (!this.shareUrl) return;
+        try {
+            await navigator.clipboard.writeText(this.shareUrl);
+            toast('Link copied', 'success', 1800);
+        } catch {
+            // The clipboard API needs a secure context, which a LAN address isn't; fall back to selecting it.
+            getSelection().selectAllChildren($('#share-url'));
+            toast('Press Ctrl+C to copy', 'info');
+        }
+    }
+
     async refreshRooms() {
         const response = await this.app.request('rooms:list');
         if (this.el.hidden || !response.rooms) return;
@@ -118,8 +162,11 @@ export class HomeScreen {
     }
 
     renderRooms(rooms) {
+        // Only show the list when there's something to join; an empty box is just noise.
+        $('#rooms').hidden = !rooms.length;
         if (!rooms.length) {
-            this.roomsList.replaceChildren(h('li', { class: 'rooms-empty' }, 'No open rooms yet — create one and invite your friends.'));
+            this.roomsList.replaceChildren();
+            delete this.roomsList.dataset.key;
             return;
         }
 

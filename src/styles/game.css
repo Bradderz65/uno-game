@@ -650,25 +650,31 @@
   display: none;
 }
 
+/* Cards are absolutely placed by Hand.layout(), in one or more overlapping fanned rows. */
 .hand {
-  --step: var(--hand-card-w);
-  display: flex;
-  justify-content: center;
-  width: max-content;
+  position: relative;
   min-width: 100%;
-  padding: 0 calc(var(--hand-card-w) * 0.25) calc(var(--hand-card-w) * 0.16);
   touch-action: pan-x;
 }
 
 .hand-slot {
-  flex: none;
+  position: absolute;
+  left: 0;
+  top: 0;
   width: var(--hand-card-w);
-  margin-left: calc(var(--step) - var(--hand-card-w));
+  translate: var(--x, 0) var(--y, 0);
   will-change: transform;
 }
 
-.hand-slot:first-child {
-  margin-left: 0;
+/* Selected cards keep their place in the stack so they never cover their neighbours. */
+.hand-slot:has(> .card.is-dragging) {
+  z-index: 300;
+}
+
+@media (hover: hover) {
+  .hand-slot:hover {
+    z-index: 250;
+  }
 }
 
 .hand .card {
@@ -709,14 +715,9 @@
   }
 }
 
-.hand .card.is-selected {
-  --lift: calc(var(--hand-card-w) * -0.28) !important;
-  filter: none !important;
-  box-shadow:
-    0 0 0 3px #fff,
-    0 0 0 6px color-mix(in srgb, var(--c) 70%, #fff),
-    0 18px 40px -8px rgb(0 0 0 / 0.7);
-  z-index: 3;
+/* A selected card has moved up to the tray; the rest of the hand closes the gap. */
+.hand-slot.is-staged {
+  display: none;
 }
 
 .hand .card.is-dragging {
@@ -742,23 +743,113 @@
   }
 }
 
-.select-order {
+/* ---------------------------------------------------------------- Staging
+   Cards you've picked float in a tray above your hand, in play order. */
+.staging {
+  --stage-w: min(calc(var(--hand-card-w) * 0.92), 104px);
   position: absolute;
-  z-index: 3;
-  top: -10px;
+  left: 50%;
+  bottom: calc(100% - 6px);
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  max-width: calc(100% - 24px);
+  padding: 0 12px 14px;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+/* Soft pool of light the staged cards sit on. */
+.staging::before {
+  content: '';
+  position: absolute;
+  inset: 30% -10% -10%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--table-color) 45%, transparent), transparent);
+  filter: blur(10px);
+  opacity: 0;
+  transition: opacity var(--dur) ease;
+}
+
+.staging.is-open::before {
+  opacity: 1;
+}
+
+.staged {
+  position: relative;
+  flex: none;
+  width: var(--stage-w);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  rotate: var(--rot, 0deg);
+  transform-origin: 50% 100%;
+  transition: rotate var(--dur) var(--ease-out), translate var(--dur) var(--ease-out);
+}
+
+.staged + .staged {
+  margin-left: 8px;
+}
+
+.staging.is-crowded .staged + .staged {
+  margin-left: calc(var(--stage-w) * -0.42);
+}
+
+.staged .card {
+  --card-w: var(--stage-w);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 5px color-mix(in srgb, var(--c) 75%, #fff),
+    0 0 26px 4px color-mix(in srgb, var(--c) 55%, transparent),
+    0 22px 36px -12px rgb(0 0 0 / 0.8);
+}
+
+@media (hover: hover) {
+  .staged:hover {
+    translate: 0 -6px;
+  }
+}
+
+.staged:focus-visible {
+  outline: none;
+}
+
+.staged:focus-visible .card {
+  box-shadow: 0 0 0 3px var(--focus), 0 22px 36px -12px rgb(0 0 0 / 0.8);
+}
+
+.staged.is-leaving {
+  z-index: 50;
+  pointer-events: none;
+}
+
+.staged-order {
+  position: absolute;
+  top: -9px;
   left: 50%;
   translate: -50% 0;
   display: grid;
   place-items: center;
-  width: 22px;
+  min-width: 22px;
   height: 22px;
-  border-radius: 50%;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
   background: #fff;
   color: var(--text-inverse);
   font-size: 12px;
   font-weight: 800;
   box-shadow: var(--shadow-sm);
 }
+
+.staged-order:empty {
+  display: none;
+}
+
 
 .hand-empty {
   display: grid;

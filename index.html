@@ -46,6 +46,7 @@
       <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17c0 .6-.5 1-1 1.2C7.9 18.8 7 20.2 7 22M14 14.7V17c0 .6.5 1 1 1.2 1.1.6 2 2 2 3.8M18 2H6v7a6 6 0 0 0 12 0V2z"/></symbol>
       <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
       <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+      <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="4" height="4" rx="1"/><rect x="13" y="13" width="4" height="4" rx="1"/><path d="M13 7h4v2M7 17v-4h2"/></symbol>
       <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
       <symbol id="sym-skip" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6 18 18 6"/></symbol>
       <symbol id="sym-reverse" viewBox="0 0 24 24"><path d="M4 9h13M13.5 4.5 18 9l-4.5 4.5M20 15H7M10.5 10.5 6 15l4.5 4.5"/></symbol>
@@ -66,14 +67,12 @@
             <span class="brand-tile red">U</span><span class="brand-tile yellow">N</span><span class="brand-tile green">O</span>
           </div>
           <h1 class="brand-title">Play UNO with friends</h1>
-          <p class="brand-lede">Real-time multiplayer on your local network. No accounts and no installs — just share a code.</p>
+          <p class="brand-lede">Real-time multiplayer on your local network. No accounts, no installs.</p>
+          <button class="link-btn" type="button" data-open-rules>
+            <svg class="icon"><use href="#i-help"/></svg>How to play
+          </button>
         </div>
         <div class="hero-cards" id="hero-cards" aria-hidden="true"></div>
-        <ul class="hero-features">
-          <li><svg class="icon"><use href="#i-users"/></svg>Up to 10 players</li>
-          <li><svg class="icon"><use href="#i-bot"/></svg>Smart bots</li>
-          <li><svg class="icon"><use href="#i-sliders"/></svg>House rules</li>
-        </ul>
       </div>
 
       <div class="home-panel panel">
@@ -87,7 +86,7 @@
           Create a room
         </button>
 
-        <div class="divider"><span>or join a room</span></div>
+        <div class="divider"><span>or join with a code</span></div>
 
         <form class="join-row" id="join-form" onsubmit="return false">
           <label class="sr-only" for="room-code">Room code</label>
@@ -95,19 +94,29 @@
           <button id="join-btn" class="btn btn-secondary" type="submit">Join</button>
         </form>
 
-        <div class="rooms">
+        <div class="rooms" id="rooms" hidden>
           <div class="rooms-head">
             <h2 class="eyebrow">Open rooms</h2>
             <span class="live-dot" title="Updates automatically">Live</span>
           </div>
-          <ul class="rooms-list" id="rooms-list" aria-live="polite">
-            <li class="rooms-empty">Looking for games…</li>
-          </ul>
+          <ul class="rooms-list" id="rooms-list" aria-live="polite"></ul>
         </div>
 
-        <button class="link-btn" type="button" data-open-rules>
-          <svg class="icon"><use href="#i-help"/></svg>How to play
-        </button>
+        <div class="share" id="share-card">
+          <button class="share-qr" id="share-qr" type="button" aria-label="Show a larger QR code">
+            <span class="share-qr-code" id="share-qr-code"><span class="qr-skeleton"></span></span>
+          </button>
+          <div class="share-copy">
+            <span class="share-title"><svg class="icon"><use href="#i-scan"/></svg>Scan to join</span>
+            <p class="share-text" id="share-text">Phones on the same Wi-Fi can scan to open the game.</p>
+            <div class="share-link">
+              <span class="share-url" id="share-url">Finding network address…</span>
+              <button class="btn btn-ghost btn-icon btn-sm" type="button" id="share-copy-btn" aria-label="Copy link">
+                <svg class="icon"><use href="#i-copy"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -273,6 +282,7 @@
       </main>
 
       <footer class="dock" id="dock">
+        <div class="staging" id="staging" role="group" aria-label="Cards you're about to play"></div>
         <div class="dock-bar">
           <p class="dock-status" id="dock-status">Waiting…</p>
           <div class="dock-tools">
@@ -344,6 +354,18 @@
         <button class="btn btn-secondary" type="button" id="results-leave">Leave</button>
         <button class="btn btn-primary" type="button" id="results-ready">Play again</button>
       </div>
+    </div>
+  </dialog>
+
+  <dialog class="dialog qr-dialog" id="qr-dialog" aria-labelledby="qr-title">
+    <div class="dialog-body">
+      <div class="dialog-head">
+        <h2 class="dialog-title" id="qr-title">Scan to join</h2>
+        <form method="dialog"><button class="btn btn-ghost btn-icon" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button></form>
+      </div>
+      <div class="qr-large" id="qr-large"></div>
+      <p class="qr-large-url" id="qr-large-url"></p>
+      <p class="qr-large-hint muted">Open the camera on your phone and point it at the code. You need to be on the same Wi-Fi as this device.</p>
     </div>
   </dialog>
 

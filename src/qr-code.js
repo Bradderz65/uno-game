@@ -10,9 +10,8 @@ const VERSION_INFO = [
 const FORMAT_ECC_L = 1;
 const MASK_PATTERN = 0;
 
-export function createQrSvg(text, options = {}) {
-    const quiet = options.quiet ?? 4;
-    const scale = options.scale ?? 6;
+/** Encode text as a QR code and return its modules as rows of booleans (true = dark). */
+export function createQrMatrix(text) {
     const bytes = Array.from(new TextEncoder().encode(text));
     const version = pickVersion(bytes.length);
     const info = VERSION_INFO[version];
@@ -25,11 +24,19 @@ export function createQrSvg(text, options = {}) {
     const ecc = reedSolomon(dataCodewords, info.eccCodewords);
     placeDataBits(modules, reserved, [...dataCodewords, ...ecc]);
     drawFormatBits(modules, reserved, FORMAT_ECC_L, MASK_PATTERN);
+    return modules;
+}
 
-    const size = (info.size + quiet * 2) * scale;
+export function createQrSvg(text, options = {}) {
+    const quiet = options.quiet ?? 4;
+    const scale = options.scale ?? 6;
+    const modules = createQrMatrix(text);
+    const count = modules.length;
+
+    const size = (count + quiet * 2) * scale;
     const darkCells = [];
-    for (let y = 0; y < info.size; y++) {
-        for (let x = 0; x < info.size; x++) {
+    for (let y = 0; y < count; y++) {
+        for (let x = 0; x < count; x++) {
             if (modules[y][x]) {
                 darkCells.push(`<rect x="${(x + quiet) * scale}" y="${(y + quiet) * scale}" width="${scale}" height="${scale}"/>`);
             }

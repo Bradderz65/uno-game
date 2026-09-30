@@ -30,6 +30,7 @@ export class GameScreen {
 
         this.drawPileEl.prepend(renderCardBack());
         this.hand = new Hand($('#hand'), {
+            staging: $('#staging'),
             onSelectionChange: () => this.renderDock(),
             onPlayRequest: () => this.playSelected(),
             onInvalid: (reason, slot) => {
